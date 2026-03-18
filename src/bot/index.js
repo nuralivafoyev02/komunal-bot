@@ -346,11 +346,11 @@ bot.on('callback_query', async ctx => {
       if (targetUser) {
         const expiry = new Date(Date.now() + (plan.duration || 30) * 86400000).toISOString();
         await UserRepo.save(targetUserId, { ...targetUser, subscription: 'premium', subscriptionExpiry: expiry });
-        await ctx.editMessageText(`✅ @${targetUser.username || targetUserId} ga Premium berildi.`, { parse_mode: 'HTML' }).catch(e => e.description?.includes('message is not modified') ? null : console.error(e));
+        await ctx.editMessageCaption(`✅ @${targetUser.username || targetUserId} ga Premium berildi.`, { parse_mode: 'HTML' }).catch(e => e.description?.includes('message is not modified') ? null : console.error(e));
         await bot.telegram.sendMessage(targetUserId, `⭐ <b>Tabriklaymiz!</b>\n\nTo'lovingiz tasdiqlandi. Premium tarif yoqildi!`, { parse_mode: 'HTML' });
       }
     } else {
-      await ctx.editMessageText(`❌ To'lov rad etildi.`, { parse_mode: 'HTML' }).catch(e => e.description?.includes('message is not modified') ? null : console.error(e));
+      await ctx.editMessageCaption(`❌ To'lov rad etildi.`, { parse_mode: 'HTML' }).catch(e => e.description?.includes('message is not modified') ? null : console.error(e));
       await bot.telegram.sendMessage(targetUserId, `❌ <b>Kechirasiz!</b>\n\nTo'lov tasdiqlanmadi. Agar xatolik bo'lsa, adminga murojaat qiling.`, { parse_mode: 'HTML' });
     }
     return;
