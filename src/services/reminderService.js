@@ -34,7 +34,7 @@ async function checkLowBalance(user, home, k) {
   if (!user.reminderSettings?.lowBalanceAlert) return;
   if (Number(k.balance) <= Number(k.minAlert || 0) && Number(k.minAlert) > 0) {
     await send(
-      user.userId,
+      user.id,
       NOTIFICATION_TYPES.LOW_BALANCE,
       `Kam balans — ${k.name}`,
       `⚠️ <b>${home.name}</b> — ${k.emoji} <b>${k.name}</b>\n\n` +
@@ -55,7 +55,7 @@ async function checkPaymentDue(user, home, k) {
 
   if (daysLeft >= 0 && daysLeft <= threshold) {
     await send(
-      user.userId,
+      user.id,
       NOTIFICATION_TYPES.PAYMENT_DUE,
       `To'lov muddati yaqin — ${k.name}`,
       `📅 <b>${home.name}</b> — ${k.emoji} <b>${k.name}</b>\n\n` +
@@ -65,7 +65,7 @@ async function checkPaymentDue(user, home, k) {
     );
   } else if (daysLeft < 0) {
     await send(
-      user.userId,
+      user.id,
       NOTIFICATION_TYPES.PAYMENT_OVERDUE,
       `To'lov kechikdi — ${k.name}`,
       `🚨 <b>${home.name}</b> — ${k.emoji} <b>${k.name}</b>\n\n` +
@@ -85,7 +85,7 @@ async function checkLongNoPayment(user, home, k) {
 
   if (daysSince >= 45) {
     await send(
-      user.userId,
+      user.id,
       NOTIFICATION_TYPES.PAYMENT_DUE,
       `Uzoq to'lov yo'q — ${k.name}`,
       `🔔 <b>${home.name}</b> — ${k.emoji} <b>${k.name}</b>\n\n` +

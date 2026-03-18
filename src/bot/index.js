@@ -119,7 +119,7 @@ bot.on('text', async ctx => {
     case '👑 Admin Panel': return (await UserRepo.isAdmin(userId)) ? ctx.reply('Admin buyruqlari:\n/admin /users /stats /message /alert') : null;
     default: {
       const notifLabel = text.match(/🔔 Bildirishnomalar/);
-      if (notifLabel) return showNotifications(ctx);
+      if (notifLabel) return await showNotifications(ctx);
     }
   }
 });

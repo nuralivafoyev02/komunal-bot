@@ -82,8 +82,8 @@ async function showStats(ctx) {
   if (!home) return ctx.reply('Uy topilmadi.');
 
   const komunallar = Object.values(home.komunallar || {});
-  const compare = Analytics.compareMonths(userId);
-  const insight = Analytics.generateInsight(userId);
+  const compare = await Analytics.compareMonths(userId);
+  const insight = await Analytics.generateInsight(userId);
 
   let total = 0;
   let msg = `📊 <b>Statistika — ${home.name}</b>\n\n`;

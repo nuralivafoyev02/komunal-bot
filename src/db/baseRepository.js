@@ -26,16 +26,17 @@ function createRepository(collection) {
     findMany: async (filter = {}) => {
       let query = supabase.from(collection).select('*');
       
+      if (typeof filter === 'function') {
+        const { data, error } = await query;
+        if (error) {
+          console.error(`Error finding many in ${collection}:`, error);
+          return [];
+        }
+        return (data || []).filter(filter);
+      }
+
       // Basic filter support (equality)
       for (const [key, value] of Object.entries(filter)) {
-        if (typeof value === 'function') {
-           // Warning: predicate filtering is not supported in Supabase easily.
-           // We would need to fetch all and filter locally, which is inefficient.
-           // For migration, we'll fetch all and filter locally if a function is passed.
-           const { data, error } = await query;
-           if (error) throw error;
-           return data.filter(value);
-        }
         query = query.eq(key, value);
       }
       
