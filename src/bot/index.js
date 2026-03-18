@@ -3,14 +3,13 @@ import { Telegraf, Markup } from 'telegraf';
 
 import * as UserRepo from '../db/repositories/UserRepository.js';
 import { add } from '../db/repositories/PaymentRepository.js';
-import * as NotifRepo from '../db/repositories/NotificationRepository.js';
 import NotifSvc from '../services/notificationService.js';
 import { start as startReminderSvc } from '../services/reminderService.js';
 import AiSvc from '../services/aiService.js';
 import PaymentSvc from '../services/paymentService.js';
 import { register } from './commands/admin.js';
 import { handleScreenshot, saveScreenshotPayment } from './handlers/screenshot.js';
-import { states, setState, getState, clearState, mainMenu, showBalances, showStats, startAddKomunal, showNotifications, showReminderSettings, startPayment, showHelp } from './handlers/menu.js';
+import { states, setState, getState, clearState, mainMenu, showBalances, showStats, startAddKomunal, showNotifications, showReminderSettings, startPayment, showHelp, showPremiumPlans } from './handlers/menu.js';
 import { KOMUNAL_TYPES, SUBSCRIPTION_PLANS, NOTIFICATION_TYPES } from '../config/constants.js';
 
 const bot = new Telegraf(process.env.BOT_TOKEN);
