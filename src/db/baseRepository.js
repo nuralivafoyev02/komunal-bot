@@ -17,7 +17,13 @@ async function withRetry(fn, retries = 3, delayMs = 500) {
     } catch (err) {
       lastErr = err;
       // Retry only on fetch failures or socket errors
-      const isNetworkErr = err.message?.includes('fetch failed') || err.message?.includes('socket') || err.code === 'UND_ERR_SOCKET';
+      const isNetworkErr = 
+        err.message?.includes('fetch failed') || 
+        err.message?.includes('socket') || 
+        err.message?.includes('ECONNRESET') ||
+        err.code === 'UND_ERR_SOCKET' ||
+        err.code === 'ECONNRESET';
+        
       if (!isNetworkErr) throw err;
       if (i < retries - 1) await new Promise(r => setTimeout(r, delayMs * (i + 1)));
     }

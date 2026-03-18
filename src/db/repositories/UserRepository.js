@@ -39,8 +39,9 @@ async function findAll() { return await repo.values(); }
 async function count() { return await repo.count(); }
 async function isAdmin(id) {
   const envList = (process.env.ADMIN_IDS || '').split(',').map(x => x.trim());
+  if (envList.includes(String(id))) return true;
   const user = await repo.findById(id);
-  return envList.includes(String(id)) || user?.role === 'admin';
+  return user?.role === 'admin';
 }
 async function addAdmin(id) {
   const user = await repo.findById(id) || {};
