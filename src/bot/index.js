@@ -342,15 +342,18 @@ bot.on('callback_query', async ctx => {
 
     if (action === 'approve') {
       const plan = PREMIUM_PLANS.find(p => p.id === planId);
-      const targetUser = await UserRepo.findById(targetUserId);
-      if (targetUser) {
-        const expiry = new Date(Date.now() + (plan.duration || 30) * 86400000).toISOString();
-        await UserRepo.save(targetUserId, { ...targetUser, subscription: 'premium', subscriptionExpiry: expiry });
-        await ctx.editMessageCaption(`✅ @${targetUser.username || targetUserId} ga Premium berildi.`, { parse_mode: 'HTML' }).catch(e => e.description?.includes('message is not modified') ? null : console.error(e));
+      const expiry = new Date(Date.now() + (plan.duration || 30) * 86400000).toISOString();
+      
+      try {
+        await UserRepo.update(targetUserId, { subscription: 'premium', subscriptionExpiry: expiry });
+        await ctx.editMessageCaption(`✅ Premium berildi (ID: ${targetUserId})`, { parse_mode: 'HTML' }).catch(() => {});
         await bot.telegram.sendMessage(targetUserId, `⭐ <b>Tabriklaymiz!</b>\n\nTo'lovingiz tasdiqlandi. Premium tarif yoqildi!`, { parse_mode: 'HTML' });
+      } catch (err) {
+        console.error('Error approving premium:', err);
+        await ctx.answerCbQuery('Xatolik yuz berdi. Iltimos qayta urinib ko\'ring.', { show_alert: true });
       }
     } else {
-      await ctx.editMessageCaption(`❌ To'lov rad etildi.`, { parse_mode: 'HTML' }).catch(e => e.description?.includes('message is not modified') ? null : console.error(e));
+      await ctx.editMessageCaption(`❌ To'lov rad etildi.`, { parse_mode: 'HTML' }).catch(() => {});
       await bot.telegram.sendMessage(targetUserId, `❌ <b>Kechirasiz!</b>\n\nTo'lov tasdiqlanmadi. Agar xatolik bo'lsa, adminga murojaat qiling.`, { parse_mode: 'HTML' });
     }
     return;

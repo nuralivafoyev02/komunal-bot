@@ -74,6 +74,20 @@ function createRepository(collection) {
       }
       return data;
     },
+    update: async (id, partialRecord) => {
+      const { data, error } = await withRetry(() => supabase
+        .from(collection)
+        .update({ ...partialRecord, updatedAt: new Date().toISOString() })
+        .eq('id', String(id))
+        .select()
+        .single());
+      
+      if (error) {
+        console.error(`Error updating ${collection} id ${id}:`, error);
+        throw error;
+      }
+      return data;
+    },
     remove: async (id) => {
       const { error } = await withRetry(() => supabase
         .from(collection)

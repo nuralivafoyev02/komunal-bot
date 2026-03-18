@@ -62,4 +62,6 @@ async function getActiveHome(id) {
   return user.homes[user.activeHomeId || 'default'] || Object.values(user.homes)[0];
 }
 
-export { create, findById, save, findAll, count, isAdmin, addAdmin, getPlan, canAddHome, getActiveHome };
+async function update(id, partial) { return await repo.update(id, partial); }
+
+export { create, findById, save, update, findAll, count, isAdmin, addAdmin, getPlan, canAddHome, getActiveHome };
