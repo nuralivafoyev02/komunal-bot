@@ -49,7 +49,7 @@ function createRepository(collection) {
     save: async (id, record) => {
       const { data, error } = await supabase
         .from(collection)
-        .upsert({ ...record, id: String(id), updated_at: new Date().toISOString() })
+        .upsert({ ...record, id: String(id), updatedAt: new Date().toISOString() })
         .select()
         .single();
       
