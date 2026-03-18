@@ -1,0 +1,604 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Komunal Bot</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg:      #070D1A;
+    --bg2:     #0D1628;
+    --bg3:     #131E30;
+    --card:    rgba(255,255,255,0.04);
+    --border:  rgba(255,255,255,0.08);
+    --text:    #E8EEF8;
+    --muted:   rgba(232,238,248,0.5);
+    --dim:     rgba(232,238,248,0.3);
+
+    --elektr:  #7B61FF;
+    --gaz:     #FF7A38;
+    --suv:     #2DD4BF;
+    --internet:#34D399;
+    --issiqlik:#FB7185;
+    --axlat:   #A3E635;
+
+    --radius:  14px;
+    --radius-sm: 10px;
+    --font:    'Plus Jakarta Sans', sans-serif;
+  }
+
+  html, body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font);
+    font-size: 15px;
+    min-height: 100vh;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* ─── Loading ─────────────────────────────────── */
+  #loading {
+    position: fixed; inset: 0;
+    background: var(--bg);
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    gap: 16px; z-index: 100;
+    transition: opacity .4s;
+  }
+  #loading .logo {
+    width: 64px; height: 64px;
+    background: linear-gradient(135deg, #7B61FF, #34D399);
+    border-radius: 18px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 28px;
+    animation: pulse 1.5s ease-in-out infinite;
+  }
+  #loading p { color: var(--muted); font-size: 14px; }
+  @keyframes pulse { 0%,100%{transform:scale(1)} 50%{transform:scale(1.07)} }
+
+  /* ─── Layout ──────────────────────────────────── */
+  #app { display: none; padding: 0 0 32px; }
+  #app.ready { display: block; }
+
+  .section { padding: 0 16px; margin-bottom: 24px; }
+
+  /* ─── Header ──────────────────────────────────── */
+  .header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 20px 16px 12px;
+    position: sticky; top: 0; z-index: 10;
+    background: linear-gradient(var(--bg) 85%, transparent);
+  }
+  .header-left { display: flex; align-items: center; gap: 10px; }
+  .avatar {
+    width: 38px; height: 38px; border-radius: 50%;
+    background: linear-gradient(135deg, #7B61FF, #34D399);
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 700; font-size: 15px; color: #fff;
+    flex-shrink: 0;
+  }
+  .header-name { font-weight: 600; font-size: 15px; }
+  .header-phone { font-size: 12px; color: var(--muted); margin-top: 1px; }
+  .header-badge {
+    background: rgba(123,97,255,0.18);
+    color: #A78BFA;
+    font-size: 11px; font-weight: 600;
+    padding: 4px 10px; border-radius: 20px;
+  }
+
+  /* ─── Total card ──────────────────────────────── */
+  .total-card {
+    margin: 0 16px 20px;
+    background: linear-gradient(135deg, #1A1040 0%, #0F2040 100%);
+    border: 1px solid rgba(123,97,255,0.2);
+    border-radius: 20px;
+    padding: 22px 22px 18px;
+    position: relative; overflow: hidden;
+  }
+  .total-card::before {
+    content: '';
+    position: absolute; top: -40px; right: -40px;
+    width: 150px; height: 150px;
+    background: radial-gradient(circle, rgba(123,97,255,0.2) 0%, transparent 70%);
+    pointer-events: none;
+  }
+  .total-label { font-size: 12px; color: var(--muted); font-weight: 500; letter-spacing: .4px; text-transform: uppercase; }
+  .total-amount {
+    font-size: 32px; font-weight: 800; color: #fff;
+    margin: 6px 0 4px; letter-spacing: -0.5px;
+  }
+  .total-amount span { font-size: 17px; font-weight: 500; color: var(--muted); margin-left: 4px; }
+  .total-meta { display: flex; gap: 16px; margin-top: 14px; }
+  .total-meta-item { font-size: 12px; color: var(--muted); }
+  .total-meta-item strong { color: var(--text); font-weight: 600; display: block; font-size: 14px; }
+  .alert-badge {
+    display: inline-flex; align-items: center; gap: 5px;
+    background: rgba(251,113,133,0.15); color: #FB7185;
+    font-size: 11px; font-weight: 600; padding: 4px 10px; border-radius: 20px;
+    margin-top: 14px;
+  }
+
+  /* ─── Section header ──────────────────────────── */
+  .section-title {
+    font-size: 12px; font-weight: 600; color: var(--muted);
+    letter-spacing: .6px; text-transform: uppercase;
+    margin-bottom: 12px;
+  }
+
+  /* ─── Komunal grid ────────────────────────────── */
+  .komunal-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+
+  .komunal-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 14px;
+    cursor: pointer;
+    transition: transform .15s, border-color .15s;
+    position: relative; overflow: hidden;
+  }
+  .komunal-card:active { transform: scale(0.97); }
+  .komunal-card.low { border-color: rgba(251,113,133,0.35); }
+
+  .komunal-card-accent {
+    position: absolute; top: 0; left: 0;
+    width: 3px; height: 100%;
+    border-radius: 2px 0 0 2px;
+  }
+
+  .komunal-card-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+  .komunal-emoji { font-size: 20px; }
+  .komunal-alert { font-size: 14px; }
+
+  .komunal-name { font-size: 12px; color: var(--muted); font-weight: 500; margin-bottom: 4px; }
+  .komunal-balance { font-size: 17px; font-weight: 700; color: var(--text); letter-spacing: -0.3px; }
+  .komunal-balance span { font-size: 12px; font-weight: 400; color: var(--muted); }
+
+  .komunal-bar-wrap { margin-top: 10px; height: 3px; background: rgba(255,255,255,0.07); border-radius: 3px; overflow: hidden; }
+  .komunal-bar { height: 100%; border-radius: 3px; transition: width .6s ease; }
+
+  .komunal-account { font-size: 11px; color: var(--dim); margin-top: 6px; }
+
+  /* ─── Chart ───────────────────────────────────── */
+  .chart-wrap {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 16px;
+  }
+  .chart-wrap canvas { max-height: 180px; }
+
+  /* ─── Transactions ────────────────────────────── */
+  .tx-list { display: flex; flex-direction: column; gap: 8px; }
+  .tx-item {
+    display: flex; align-items: center; gap: 12px;
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: var(--radius-sm); padding: 11px 14px;
+  }
+  .tx-icon {
+    width: 34px; height: 34px; border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 16px; flex-shrink: 0;
+    background: rgba(255,255,255,0.05);
+  }
+  .tx-info { flex: 1; min-width: 0; }
+  .tx-name { font-size: 13px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .tx-date { font-size: 11px; color: var(--muted); margin-top: 2px; }
+  .tx-amount { font-size: 14px; font-weight: 700; flex-shrink: 0; }
+  .tx-amount.topup  { color: #4ADE80; }
+  .tx-amount.charge { color: #FB7185; }
+
+  /* ─── Empty state ─────────────────────────────── */
+  .empty {
+    text-align: center; padding: 32px 16px;
+    color: var(--muted); font-size: 14px; line-height: 1.6;
+  }
+  .empty .big { font-size: 36px; margin-bottom: 8px; }
+
+  /* ─── Modal overlay ───────────────────────────── */
+  #modal-overlay {
+    position: fixed; inset: 0; z-index: 50;
+    background: rgba(0,0,0,0.7);
+    display: none; align-items: flex-end;
+  }
+  #modal-overlay.open { display: flex; }
+  .modal {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 22px 22px 0 0;
+    padding: 24px 20px 36px;
+    width: 100%;
+    animation: slideUp .25s ease;
+  }
+  @keyframes slideUp { from{transform:translateY(100%)} to{transform:translateY(0)} }
+  .modal-handle { width: 36px; height: 4px; background: var(--border); border-radius: 2px; margin: 0 auto 20px; }
+  .modal-title { font-size: 17px; font-weight: 700; margin-bottom: 18px; }
+  .modal-balance-display {
+    background: var(--bg3); border-radius: var(--radius); padding: 14px 16px;
+    margin-bottom: 16px; font-size: 13px; color: var(--muted);
+  }
+  .modal-balance-display strong { color: var(--text); font-size: 20px; font-weight: 700; display: block; margin-top: 4px; }
+  .modal-input {
+    width: 100%; background: var(--bg3); border: 1px solid var(--border);
+    border-radius: var(--radius-sm); color: var(--text);
+    font-family: var(--font); font-size: 16px; font-weight: 600;
+    padding: 13px 14px; margin-bottom: 12px; outline: none;
+    transition: border-color .15s;
+  }
+  .modal-input:focus { border-color: var(--elektr); }
+  .modal-input::placeholder { color: var(--dim); font-weight: 400; }
+  .modal-btn {
+    width: 100%; padding: 14px;
+    background: linear-gradient(135deg, #7B61FF, #34D399);
+    border: none; border-radius: var(--radius-sm);
+    color: #fff; font-family: var(--font); font-size: 15px; font-weight: 700;
+    cursor: pointer; transition: opacity .15s;
+  }
+  .modal-btn:active { opacity: 0.85; }
+  .modal-cancel {
+    width: 100%; padding: 12px;
+    background: none; border: none;
+    color: var(--muted); font-family: var(--font); font-size: 14px;
+    cursor: pointer; margin-top: 8px;
+  }
+
+  /* ─── Toast ───────────────────────────────────── */
+  .toast {
+    position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
+    background: rgba(20,30,50,0.95); border: 1px solid var(--border);
+    border-radius: 20px; padding: 10px 20px;
+    font-size: 13px; font-weight: 500; color: var(--text);
+    white-space: nowrap; z-index: 200;
+    animation: toastIn .2s ease;
+    backdrop-filter: blur(10px);
+  }
+  @keyframes toastIn { from{opacity:0;transform:translateX(-50%) translateY(8px)} to{opacity:1;transform:translateX(-50%) translateY(0)} }
+
+  /* ─── Scrollbar ───────────────────────────────── */
+  ::-webkit-scrollbar { width: 0; }
+</style>
+</head>
+<body>
+
+<!-- Loading -->
+<div id="loading">
+  <div class="logo">⚡</div>
+  <p>Ma'lumotlar yuklanmoqda...</p>
+</div>
+
+<!-- App -->
+<div id="app">
+
+  <!-- Header -->
+  <div class="header">
+    <div class="header-left">
+      <div class="avatar" id="avatar">?</div>
+      <div>
+        <div class="header-name" id="header-name">—</div>
+        <div class="header-phone" id="header-phone">—</div>
+      </div>
+    </div>
+    <div class="header-badge">Komunal Bot</div>
+  </div>
+
+  <!-- Total balance card -->
+  <div class="total-card">
+    <div class="total-label">Jami balans</div>
+    <div class="total-amount" id="total-amount">0 <span>so'm</span></div>
+    <div class="total-meta">
+      <div class="total-meta-item">
+        <strong id="meta-count">0</strong>
+        Kommunal
+      </div>
+      <div class="total-meta-item">
+        <strong id="meta-paid">0</strong>
+        Jami to'langan
+      </div>
+    </div>
+    <div class="alert-badge" id="alert-badge" style="display:none">
+      ⚠️ <span id="alert-count">0</span> ta kommunal past
+    </div>
+  </div>
+
+  <!-- Komunallar -->
+  <div class="section">
+    <div class="section-title">Kommunallar</div>
+    <div class="komunal-grid" id="komunal-grid">
+      <div class="empty"><div class="big">📭</div>Kommunallar qo'shilmagan</div>
+    </div>
+  </div>
+
+  <!-- Chart -->
+  <div class="section" id="chart-section" style="display:none">
+    <div class="section-title">Oylik to'lovlar</div>
+    <div class="chart-wrap">
+      <canvas id="payChart"></canvas>
+    </div>
+  </div>
+
+  <!-- Transactions -->
+  <div class="section" id="tx-section" style="display:none">
+    <div class="section-title">So'nggi to'lovlar</div>
+    <div class="tx-list" id="tx-list"></div>
+  </div>
+
+</div>
+
+<!-- Update balance modal -->
+<div id="modal-overlay" onclick="closeModal(event)">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title" id="modal-title">Balansni yangilash</div>
+    <div class="modal-balance-display">
+      Hozirgi balans
+      <strong id="modal-current">0 so'm</strong>
+    </div>
+    <input class="modal-input" id="modal-input" type="number" inputmode="numeric" placeholder="Yangi balans (so'mda)" />
+    <button class="modal-btn" onclick="submitBalance()">✅ Saqlash</button>
+    <button class="modal-cancel" onclick="closeModalNow()">Bekor qilish</button>
+  </div>
+</div>
+
+<script>
+// ── Telegram WebApp init ─────────────────────────────────────────────────────
+const tg = window.Telegram?.WebApp;
+if (tg) { tg.ready(); tg.expand(); }
+
+const params    = new URLSearchParams(window.location.search);
+const userId    = tg?.initDataUnsafe?.user?.id || params.get('userId') || 'TEST_USER';
+const API       = window.location.origin;
+
+// ── Color map ────────────────────────────────────────────────────────────────
+const COLORS = {
+  elektr:   { accent: '#7B61FF', bg: 'rgba(123,97,255,0.12)',  gradient: 'linear-gradient(135deg,#7B61FF,#9B86FF)' },
+  gaz:      { accent: '#FF7A38', bg: 'rgba(255,122,56,0.12)',  gradient: 'linear-gradient(135deg,#FF7A38,#FFAA70)' },
+  suv:      { accent: '#2DD4BF', bg: 'rgba(45,212,191,0.12)',  gradient: 'linear-gradient(135deg,#2DD4BF,#5EEAD4)' },
+  internet: { accent: '#34D399', bg: 'rgba(52,211,153,0.12)',  gradient: 'linear-gradient(135deg,#34D399,#6EE7B7)' },
+  issiqlik: { accent: '#FB7185', bg: 'rgba(251,113,133,0.12)', gradient: 'linear-gradient(135deg,#FB7185,#FDA4AF)' },
+  axlat:    { accent: '#A3E635', bg: 'rgba(163,230,53,0.12)',  gradient: 'linear-gradient(135deg,#A3E635,#BEF264)' },
+};
+const DEFAULT_COLOR = { accent: '#94A3B8', bg: 'rgba(148,163,184,0.12)', gradient: 'linear-gradient(135deg,#94A3B8,#CBD5E1)' };
+
+// ── State ────────────────────────────────────────────────────────────────────
+let userData       = null;
+let activeKomunalId = null;
+let chartInstance  = null;
+
+// ── Fetch user data ──────────────────────────────────────────────────────────
+async function loadUser() {
+  try {
+    const res = await fetch(`${API}/api/user/${userId}`);
+    if (!res.ok) throw new Error('not found');
+    userData = await res.json();
+    render();
+  } catch {
+    showEmpty();
+  } finally {
+    hideSplash();
+  }
+}
+
+function hideSplash() {
+  const el = document.getElementById('loading');
+  el.style.opacity = '0';
+  setTimeout(() => { el.style.display = 'none'; document.getElementById('app').classList.add('ready'); }, 400);
+}
+
+function showEmpty() {
+  hideSplash();
+  document.getElementById('komunal-grid').innerHTML = `
+    <div class="empty" style="grid-column:1/-1">
+      <div class="big">🤖</div>
+      Telegram botda /start bosing va ro'yxatdan o'ting.
+    </div>`;
+}
+
+// ── Render ───────────────────────────────────────────────────────────────────
+function render() {
+  if (!userData) return;
+
+  // Header
+  const initials = (userData.firstName?.[0] || '?').toUpperCase();
+  document.getElementById('avatar').textContent      = initials;
+  document.getElementById('header-name').textContent = userData.firstName + (userData.lastName ? ' ' + userData.lastName : '');
+  document.getElementById('header-phone').textContent = userData.phone || '—';
+
+  const komunallar = Object.entries(userData.komunallar || {});
+
+  // Totals
+  const totalBalance = komunallar.reduce((s, [, k]) => s + Number(k.balance || 0), 0);
+  const totalPaid    = komunallar.reduce((s, [, k]) => s + (k.payments || []).filter(p => p.type === 'topup').reduce((a, p) => a + Number(p.amount), 0), 0);
+  const lowCount     = komunallar.filter(([, k]) => Number(k.balance) <= Number(k.minAlert)).length;
+
+  document.getElementById('total-amount').innerHTML   = fmt(totalBalance) + ' <span>so\'m</span>';
+  document.getElementById('meta-count').textContent   = komunallar.length;
+  document.getElementById('meta-paid').textContent    = fmtShort(totalPaid);
+
+  if (lowCount > 0) {
+    document.getElementById('alert-badge').style.display = 'inline-flex';
+    document.getElementById('alert-count').textContent   = lowCount;
+  }
+
+  // Komunal grid
+  renderKomunallar(komunallar);
+
+  // Chart
+  renderChart(komunallar);
+
+  // Transactions
+  renderTransactions(komunallar);
+}
+
+function renderKomunallar(komunallar) {
+  const grid = document.getElementById('komunal-grid');
+  if (!komunallar.length) {
+    grid.innerHTML = `<div class="empty" style="grid-column:1/-1"><div class="big">📭</div>Kommunallar qo'shilmagan</div>`;
+    return;
+  }
+
+  grid.innerHTML = komunallar.map(([id, k]) => {
+    const c      = COLORS[id] || DEFAULT_COLOR;
+    const isLow  = Number(k.balance) <= Number(k.minAlert);
+    const pct    = k.minAlert > 0 ? Math.min(100, (k.balance / (k.minAlert * 3)) * 100) : 50;
+    return `
+      <div class="komunal-card ${isLow ? 'low' : ''}" onclick="openModal('${id}')">
+        <div class="komunal-card-accent" style="background:${c.accent}"></div>
+        <div class="komunal-card-top">
+          <span class="komunal-emoji">${k.emoji || '⚡'}</span>
+          ${isLow ? '<span class="komunal-alert">⚠️</span>' : ''}
+        </div>
+        <div class="komunal-name">${k.name}</div>
+        <div class="komunal-balance">${fmtNum(k.balance)} <span>so'm</span></div>
+        <div class="komunal-bar-wrap">
+          <div class="komunal-bar" style="width:${pct}%;background:${c.accent}"></div>
+        </div>
+        <div class="komunal-account">${k.accountId || ''}</div>
+      </div>`;
+  }).join('');
+}
+
+function renderChart(komunallar) {
+  const months  = getLast6Months();
+  const section = document.getElementById('chart-section');
+
+  const datasets = komunallar.slice(0, 4).map(([id, k]) => {
+    const c    = COLORS[id] || DEFAULT_COLOR;
+    const data = months.map(m => {
+      return (k.payments || [])
+        .filter(p => p.type === 'topup' && p.date.startsWith(m))
+        .reduce((s, p) => s + Number(p.amount), 0);
+    });
+    return { label: k.name, data, backgroundColor: c.accent + 'CC', borderRadius: 6 };
+  });
+
+  const hasData = datasets.some(d => d.data.some(v => v > 0));
+  if (!hasData) { section.style.display = 'none'; return; }
+  section.style.display = 'block';
+
+  const ctx = document.getElementById('payChart').getContext('2d');
+  if (chartInstance) chartInstance.destroy();
+  chartInstance = new Chart(ctx, {
+    type: 'bar',
+    data: { labels: months.map(m => m.slice(0, 7)), datasets },
+    options: {
+      responsive: true, maintainAspectRatio: true,
+      plugins: { legend: { labels: { color: 'rgba(232,238,248,0.6)', font: { family: "'Plus Jakarta Sans'", size: 11 }, boxWidth: 10 } } },
+      scales: {
+        x: { ticks: { color: 'rgba(232,238,248,0.4)', font: { size: 10 } }, grid: { color: 'rgba(255,255,255,0.04)' } },
+        y: { ticks: { color: 'rgba(232,238,248,0.4)', font: { size: 10 }, callback: v => fmtShort(v) }, grid: { color: 'rgba(255,255,255,0.04)' } }
+      }
+    }
+  });
+}
+
+function renderTransactions(komunallar) {
+  const section = document.getElementById('tx-section');
+  const list    = document.getElementById('tx-list');
+
+  const all = [];
+  for (const [, k] of komunallar) {
+    for (const p of (k.payments || [])) all.push({ ...p, komunalName: k.name, komunalEmoji: k.emoji || '⚡' });
+  }
+  all.sort((a, b) => new Date(b.date) - new Date(a.date));
+  const recent = all.slice(0, 12);
+
+  if (!recent.length) { section.style.display = 'none'; return; }
+  section.style.display = 'block';
+
+  list.innerHTML = recent.map(p => `
+    <div class="tx-item">
+      <div class="tx-icon">${p.komunalEmoji}</div>
+      <div class="tx-info">
+        <div class="tx-name">${p.komunalName}</div>
+        <div class="tx-date">${fmtDate(p.date)}</div>
+      </div>
+      <div class="tx-amount ${p.type}">${p.type === 'topup' ? '+' : '-'}${fmtNum(p.amount)}</div>
+    </div>`).join('');
+}
+
+// ── Modal: update balance ────────────────────────────────────────────────────
+function openModal(komunalId) {
+  if (!userData?.komunallar?.[komunalId]) return;
+  activeKomunalId = komunalId;
+  const k = userData.komunallar[komunalId];
+  document.getElementById('modal-title').textContent   = `${k.emoji} ${k.name}`;
+  document.getElementById('modal-current').textContent = fmt(k.balance);
+  document.getElementById('modal-input').value         = '';
+  document.getElementById('modal-overlay').classList.add('open');
+  setTimeout(() => document.getElementById('modal-input').focus(), 300);
+}
+
+function closeModal(e) {
+  if (e.target === document.getElementById('modal-overlay')) closeModalNow();
+}
+
+function closeModalNow() {
+  document.getElementById('modal-overlay').classList.remove('open');
+  activeKomunalId = null;
+}
+
+async function submitBalance() {
+  const val = parseFloat(document.getElementById('modal-input').value);
+  if (isNaN(val) || val < 0) { toast('❌ Noto\'g\'ri raqam'); return; }
+
+  try {
+    const res = await fetch(`${API}/api/user/${userId}/komunal/${activeKomunalId}/balance`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ balance: val })
+    });
+    if (!res.ok) throw new Error();
+    const data = await res.json();
+    if (userData.komunallar[activeKomunalId]) {
+      userData.komunallar[activeKomunalId] = data.komunal;
+    }
+    closeModalNow();
+    render();
+    toast('✅ Balans yangilandi!');
+    if (tg) tg.HapticFeedback?.notificationOccurred('success');
+  } catch {
+    toast('❌ Xatolik yuz berdi');
+  }
+}
+
+// ── Utils ────────────────────────────────────────────────────────────────────
+function fmt(n)      { return Number(n || 0).toLocaleString('uz-UZ') + ' so\'m'; }
+function fmtNum(n)   { return Number(n || 0).toLocaleString('uz-UZ'); }
+function fmtShort(n) {
+  n = Number(n || 0);
+  if (n >= 1_000_000) return (n / 1_000_000).toFixed(1) + 'M';
+  if (n >= 1_000)     return (n / 1_000).toFixed(0) + 'K';
+  return n.toLocaleString('uz-UZ');
+}
+function fmtDate(d) {
+  return new Date(d).toLocaleDateString('uz-UZ', { day: '2-digit', month: '2-digit', year: 'numeric' });
+}
+function getLast6Months() {
+  const months = [];
+  for (let i = 5; i >= 0; i--) {
+    const d = new Date(); d.setMonth(d.getMonth() - i);
+    months.push(d.toISOString().slice(0, 7));
+  }
+  return months;
+}
+
+let toastTimer;
+function toast(msg) {
+  clearTimeout(toastTimer);
+  const el = document.createElement('div');
+  el.className = 'toast'; el.textContent = msg;
+  document.body.appendChild(el);
+  toastTimer = setTimeout(() => el.remove(), 2500);
+}
+
+// ── Start ────────────────────────────────────────────────────────────────────
+loadUser();
+</script>
+</body>
+</html>
