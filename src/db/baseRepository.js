@@ -6,7 +6,8 @@ import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-const DB_DIR = join(__dirname, 'json');
+const IS_VERCEL = !!(process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME);
+const DB_DIR = IS_VERCEL ? '/tmp/json' : join(__dirname, 'json');
 
 if (!existsSync(DB_DIR)) {
   mkdirSync(DB_DIR, { recursive: true });
@@ -16,11 +17,16 @@ function createRepository(collection) {
   const filePath = join(DB_DIR, `${collection}.json`);
 
   if (!existsSync(filePath)) {
-    writeFileSync(filePath, JSON.stringify({}, null, 2));
+    try {
+      writeFileSync(filePath, JSON.stringify({}, null, 2));
+    } catch (e) {
+      console.warn(`Warning: Could not create initial file ${filePath}. This is expected on read-only systems if not using /tmp.`);
+    }
   }
 
   function read() {
     try {
+      if (!existsSync(filePath)) return {};
       return JSON.parse(readFileSync(filePath, 'utf8'));
     } catch (e) {
       console.error(`Error reading ${collection}:`, e);
@@ -33,6 +39,9 @@ function createRepository(collection) {
       writeFileSync(filePath, JSON.stringify(data, null, 2));
     } catch (e) {
       console.error(`Error writing ${collection}:`, e);
+      if (e.code === 'EROFS') {
+        console.error('FATAL: Attempted to write to a read-only filesystem. Are you sure DB_DIR is set correctly for Vercel?');
+      }
     }
   }
 
@@ -40,6 +49,9 @@ function createRepository(collection) {
     findById: (id) => {
       const data = read();
       return data[String(id)] || null;
+    },
+    findMany: (predicate) => {
+      return Object.values(read()).filter(predicate);
     },
     save: (id, record) => {
       const data = read();
