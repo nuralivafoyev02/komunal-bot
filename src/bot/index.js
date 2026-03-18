@@ -343,17 +343,17 @@ bot.on('callback_query', async ctx => {
     if (action === 'approve') {
       const plan = PREMIUM_PLANS.find(p => p.id === planId);
       const expiry = new Date(Date.now() + (plan.duration || 30) * 86400000).toISOString();
-      
+
       try {
         await UserRepo.update(targetUserId, { subscription: 'premium', subscriptionExpiry: expiry });
-        await ctx.editMessageCaption(`✅ Premium berildi (ID: ${targetUserId})`, { parse_mode: 'HTML' }).catch(() => {});
+        await ctx.editMessageCaption(`✅ Premium berildi (ID: ${targetUserId})`, { parse_mode: 'HTML' }).catch(() => { });
         await bot.telegram.sendMessage(targetUserId, `⭐ <b>Tabriklaymiz!</b>\n\nTo'lovingiz tasdiqlandi. Premium tarif yoqildi!`, { parse_mode: 'HTML' });
       } catch (err) {
         console.error('Error approving premium:', err);
         await ctx.answerCbQuery('Xatolik yuz berdi. Iltimos qayta urinib ko\'ring.', { show_alert: true });
       }
     } else {
-      await ctx.editMessageCaption(`❌ To'lov rad etildi.`, { parse_mode: 'HTML' }).catch(() => {});
+      await ctx.editMessageCaption(`❌ To'lov rad etildi.`, { parse_mode: 'HTML' }).catch(() => { });
       await bot.telegram.sendMessage(targetUserId, `❌ <b>Kechirasiz!</b>\n\nTo'lov tasdiqlanmadi. Agar xatolik bo'lsa, adminga murojaat qiling.`, { parse_mode: 'HTML' });
     }
     return;
@@ -437,7 +437,7 @@ async function handleAdminMedia(ctx, fileType) {
 async function handlePremiumReceipt(ctx, state) {
   const userId = ctx.from.id;
   if (!ctx.message.photo) return ctx.reply('⚠️ Iltimos, to\'lov chekini (rasm ko\'rinishida) yuboring.');
-  
+
   const photo = ctx.message.photo.at(-1).file_id;
   const planId = state.planId;
   const plan = PREMIUM_PLANS.find(p => p.id === planId);

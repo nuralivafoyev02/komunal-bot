@@ -10,25 +10,43 @@ if (!supabaseUrl || !supabaseKey) {
 const supabase = createClient(supabaseUrl || '', supabaseKey || '');
 
 async function withRetry(fn, retries = 3, delayMs = 500) {
-  let lastErr;
+  let lastRes;
   for (let i = 0; i < retries; i++) {
     try {
-      return await fn();
+      const res = await fn();
+      const error = res?.error;
+
+      if (!error) return res;
+
+      // If we have an error object, check if it's a network error
+      const msg = error.message || '';
+      const code = error.code || '';
+      const isNetworkErr =
+        msg.includes('fetch failed') ||
+        msg.includes('socket') ||
+        msg.includes('ECONNRESET') ||
+        code === 'UND_ERR_SOCKET' ||
+        code === 'ECONNRESET';
+
+      if (!isNetworkErr) return res; // Not a network error, don't retry
+
+      lastRes = res;
+      if (i < retries - 1) await new Promise(r => setTimeout(r, delayMs * (i + 1)));
     } catch (err) {
-      lastErr = err;
-      // Retry only on fetch failures or socket errors
-      const isNetworkErr = 
-        err.message?.includes('fetch failed') || 
-        err.message?.includes('socket') || 
-        err.message?.includes('ECONNRESET') ||
+      // Handle actual thrown exceptions (like DNS failures)
+      const msg = err.message || '';
+      const isNetworkErr =
+        msg.includes('fetch failed') ||
+        msg.includes('socket') ||
+        msg.includes('ECONNRESET') ||
         err.code === 'UND_ERR_SOCKET' ||
         err.code === 'ECONNRESET';
-        
+
       if (!isNetworkErr) throw err;
       if (i < retries - 1) await new Promise(r => setTimeout(r, delayMs * (i + 1)));
     }
   }
-  throw lastErr;
+  return lastRes;
 }
 
 function createRepository(collection) {
@@ -39,7 +57,7 @@ function createRepository(collection) {
         .select('*')
         .eq('id', String(id))
         .single());
-      
+
       if (error && error.code !== 'PGRST116') {
         console.error(`Error finding ${collection} by id ${id}:`, error);
       }
@@ -67,7 +85,7 @@ function createRepository(collection) {
         .upsert({ ...record, id: String(id), updatedAt: new Date().toISOString() })
         .select()
         .single());
-      
+
       if (error) {
         console.error(`Error saving to ${collection}:`, error);
         throw error;
@@ -81,7 +99,7 @@ function createRepository(collection) {
         .eq('id', String(id))
         .select()
         .single());
-      
+
       if (error) {
         console.error(`Error updating ${collection} id ${id}:`, error);
         throw error;
@@ -93,7 +111,7 @@ function createRepository(collection) {
         .from(collection)
         .delete()
         .eq('id', String(id)));
-      
+
       if (error) {
         console.error(`Error removing from ${collection}:`, error);
         throw error;
