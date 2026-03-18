@@ -256,7 +256,7 @@ html,body{background:var(--bg);color:var(--text);font-family:var(--font);font-si
           <div class="upgrade-feat">Batafsil tahlil</div>
           <div class="upgrade-feat">To'lov tarixi eksport</div>
         </div>
-        <button class="upgrade-btn" onclick="toast('💳 Tez kunda! Bot orqali to\'lov qilish mumkin bo\'ladi.')">⭐ Premium olish — 15 000 so'm/oy</button>
+        <button class="upgrade-btn" onclick="requestPremium()">⭐ Premium olish — 9 999 so'm/oy</button>
       </div>
 
       <div class="sec-title" style="margin-top:8px">Eslatmalar</div>
@@ -628,6 +628,23 @@ function openDaysModal() {
     method: 'PATCH', headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ reminderSettings: { daysBeforeDue: n } })
   });
+}
+
+async function requestPremium() {
+  try {
+    const res = await fetch(`${API}/api/users/${userId}/premium-request`, { method: 'POST' });
+    if (res.ok) {
+      if (tg) {
+        tg.showConfirm('Botda to\'lov ma\'lumotlarini davom ettirasizmi?', (ok) => {
+          if (ok) tg.close();
+        });
+      } else {
+        toast('✅ Botga o\'ting!');
+      }
+    }
+  } catch {
+    toast('❌ Xatolik yuz berdi');
+  }
 }
 
 // ── Modal: balance update ─────────────────────────────────────────────────────

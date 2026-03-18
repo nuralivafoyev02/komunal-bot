@@ -181,26 +181,35 @@ async function startPayment(ctx) {
 
 // ── Premium Plans ─────────────────────────────────────────────────────────────
 
-async function showPremiumPlans(ctx) {
-  const userId = ctx.from.id;
-  const user = await UserRepo.findById(userId);
+// ── Premium Plans ─────────────────────────────────────────────────────────────
+
+async function showPremiumPlans(ctxOrBot, userId = null) {
+  const isCtx = !!ctxOrBot.reply;
+  const bot = isCtx ? ctxOrBot.telegram : ctxOrBot;
+  const uid = isCtx ? ctxOrBot.from.id : userId;
+  const chat = isCtx ? ctxOrBot.chat.id : userId;
+
+  const user = await UserRepo.findById(uid);
   if (user?.subscription === 'premium') {
-    return ctx.reply('⭐ Sizda allaqachon Premium tarif yoqilgan!', { parse_mode: 'HTML' });
+    return isCtx ? ctxOrBot.reply('⭐ Sizda allaqachon Premium tarif yoqilgan!') : bot.sendMessage(chat, '⭐ Sizda allaqachon Premium tarif yoqilgan!');
   }
 
   const { PREMIUM_PLANS } = await import('../../config/constants.js');
   const buttons = PREMIUM_PLANS.map(p => [Markup.button.callback(`⭐ ${p.name} — ${fmt(p.price)}`, `sub_plan_${p.id}`)]);
   buttons.push([Markup.button.callback('❌ Bekor', 'cancel')]);
 
-  await ctx.reply(
-    `⭐ <b>Premium Imkoniyatlar</b>\n\n` +
+  const msg = `⭐ <b>Premium Imkoniyatlar</b>\n\n` +
     `• 🏠 10 tagacha uy qo'shish\n` +
     `• ⚡ 20 tagacha kommunal\n` +
     `• 📊 Batafsil tahlil va statistika\n` +
     `• 🔔 Kengaytirilgan eslatmalar\n\n` +
-    `<b>Tarifni tanlang:</b>`,
-    { parse_mode: 'HTML', ...Markup.inlineKeyboard(buttons) }
-  );
+    `<b>Tarifni tanlang:</b>`;
+
+  if (isCtx) {
+    await ctxOrBot.reply(msg, { parse_mode: 'HTML', ...Markup.inlineKeyboard(buttons) });
+  } else {
+    await bot.sendMessage(chat, msg, { parse_mode: 'HTML', ...Markup.inlineKeyboard(buttons) });
+  }
 }
 
 // ── Help ──────────────────────────────────────────────────────────────────────

@@ -3,6 +3,8 @@ const router = express.Router();
 import { findById, save } from '../../db/repositories/UserRepository.js';
 import { add, findByUser } from '../../db/repositories/PaymentRepository.js';
 import { findByUser as _findByUser, markRead } from '../../db/repositories/NotificationRepository.js';
+import { bot } from '../../bot/index.js';
+import { showPremiumPlans } from '../../bot/handlers/menu.js';
 
 // Get user
 router.get('/:userId', async (req, res) => {
@@ -73,7 +75,16 @@ router.patch('/:userId/settings', async (req, res) => {
   if (typeof req.body.notifications === 'boolean') {
     user.notifications = req.body.notifications;
   }
-  await save(req.params.userId, user);
+  res.json({ success: true });
+});
+
+// Request premium (trigger bot flow)
+router.post('/:userId/premium-request', async (req, res) => {
+  const userId = req.params.userId;
+  const user = await findById(userId);
+  if (!user) return res.status(404).json({ error: 'User not found' });
+  
+  await showPremiumPlans(bot, userId);
   res.json({ success: true });
 });
 
