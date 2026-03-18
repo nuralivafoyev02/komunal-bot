@@ -1,0 +1,17 @@
+{
+  "users": {
+    "7894854944": {
+      "userId": 7894854944,
+      "chatId": 7894854944,
+      "username": "uyqur_nurali",
+      "firstName": "Uyqur | Nurali",
+      "lastName": "",
+      "phone": "998500502181",
+      "registeredAt": "2026-03-18T08:23:39.192Z",
+      "komunallar": {},
+      "notifications": true,
+      "lastCheck": null
+    }
+  },
+  "admins": []
+}
