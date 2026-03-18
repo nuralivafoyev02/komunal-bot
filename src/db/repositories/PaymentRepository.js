@@ -9,11 +9,11 @@ const repo = createRepository('payments');
  * { id, userId, homeId, komunalId, komunalName, komunalEmoji,
  *   amount, balanceBefore, balanceAfter, date, type, source, provider, notes }
  */
-function add(data) {
+async function add(data) {
   const id = uuid();
   const payment = {
     id,
-    userId: data.userId,
+    userId: String(data.userId),
     homeId: data.homeId || 'default',
     komunalId: data.komunalId,
     komunalName: data.komunalName,
@@ -28,28 +28,29 @@ function add(data) {
     notes: data.notes || '',
     createdAt: new Date().toISOString(),
   };
-  return repo.save(id, payment);
+  return await repo.save(id, payment);
 }
 
-function findByUser(userId) {
-  return repo.findMany(p => String(p.userId) === String(userId))
+async function findByUser(userId) {
+  return (await repo.findMany({ userId: String(userId) }))
     .sort((a, b) => new Date(b.date) - new Date(a.date));
 }
 
-function findByUserAndKomunal(userId, komunalId) {
-  return repo.findMany(p => String(p.userId) === String(userId) && p.komunalId === komunalId)
+async function findByUserAndKomunal(userId, komunalId) {
+  return (await repo.findMany({ userId: String(userId), komunalId }))
     .sort((a, b) => new Date(b.date) - new Date(a.date));
 }
 
-function findByUserAndMonth(userId, year, month) {
+async function findByUserAndMonth(userId, year, month) {
   const prefix = `${year}-${String(month).padStart(2, '0')}`;
-  return repo.findMany(p => String(p.userId) === String(userId) && p.date.startsWith(prefix));
+  // We fetch all and filter locally for complex date prefixes
+  return (await repo.findMany(p => String(p.userId) === String(userId) && p.date.startsWith(prefix)));
 }
 
-function findAll() { return repo.values(); }
-function countAll() { return repo.count(); }
-function totalAmount(userId) {
-  return findByUser(userId).reduce((s, p) => s + (p.type === 'topup' ? p.amount : 0), 0);
+async function findAll() { return await repo.values(); }
+async function countAll() { return await repo.count(); }
+async function totalAmount(userId) {
+  return (await findByUser(userId)).reduce((s, p) => s + (p.type === 'topup' ? p.amount : 0), 0);
 }
 
 export { add, findByUser, findByUserAndKomunal, findByUserAndMonth, findAll, countAll, totalAmount };

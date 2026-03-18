@@ -5,31 +5,31 @@ import { NOTIFICATION_TYPES } from '../../config/constants.js';
 
 const repo = createRepository('notifications');
 
-function add({ userId, type, title, body, komunalId = null, status = 'sent' }) {
+async function add({ userId, type, title, body, komunalId = null, status = 'sent' }) {
   const id = uuid();
-  return repo.save(id, { id, userId: String(userId), type, title, body, komunalId, status, createdAt: new Date().toISOString() });
+  return await repo.save(id, { id, userId: String(userId), type, title, body, komunalId, status, createdAt: new Date().toISOString() });
 }
 
-function findByUser(userId, limit = 20) {
-  return repo.findMany(n => String(n.userId) === String(userId))
+async function findByUser(userId, limit = 20) {
+  return (await repo.findMany({ userId: String(userId) }))
     .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
     .slice(0, limit);
 }
 
-function countUnread(userId) {
-  return repo.findMany(n => String(n.userId) === String(userId) && n.status === 'sent').length;
+async function countUnread(userId) {
+  return (await repo.findMany({ userId: String(userId), status: 'sent' })).length;
 }
 
-function markRead(userId) {
-  const all = repo.findAll();
-  for (const [id, n] of Object.entries(all)) {
+async function markRead(userId) {
+  const all = await repo.findAll();
+  for (const n of all) {
     if (String(n.userId) === String(userId) && n.status === 'sent') {
-      repo.save(id, { ...n, status: 'read' });
+      await repo.save(n.id, { ...n, status: 'read' });
     }
   }
 }
 
-function countAll() { return repo.count(); }
+async function countAll() { return await repo.count(); }
 function typeLabel(type) {
   const map = {
     [NOTIFICATION_TYPES.LOW_BALANCE]: '💰 Kam balans',

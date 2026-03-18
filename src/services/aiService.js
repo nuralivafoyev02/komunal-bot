@@ -13,14 +13,14 @@ const fmtDate = d => new Date(d).toLocaleDateString('uz-UZ');
 /**
  * Build a rich context string from user's komunal data to feed the AI.
  */
-function buildContext(userId) {
-  const user = findById(userId);
+async function buildContext(userId) {
+  const user = await findById(userId);
   if (!user) return 'Foydalanuvchi ma\'lumotlari topilmadi.';
 
-  const home = getActiveHome(userId);
-  const payments = findByUser(userId).slice(0, 30);
-  const compare = compareMonths(userId);
-  const insight = generateInsight(userId);
+  const home = await getActiveHome(userId);
+  const payments = (await findByUser(userId)).slice(0, 30);
+  const compare = await compareMonths(userId);
+  const insight = await generateInsight(userId);
   const komunallar = Object.values(home?.komunallar || {});
 
   const lines = [
@@ -60,10 +60,10 @@ function buildContext(userId) {
 async function ask(userId, userQuestion) {
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey || apiKey === 'your_anthropic_api_key_here') {
-    return aiMockResponse(userQuestion, userId);
+    return await aiMockResponse(userQuestion, userId);
   }
 
-  const context = buildContext(userId);
+  const context = await buildContext(userId);
 
   const systemPrompt = `Sen kommunal to'lovlar bo'yicha aqlli yordamchisan.
 Foydalanuvchi Telegram bot orqali kommunal xarajatlarini kuzatmoqda.
@@ -93,8 +93,8 @@ Qoidalar:
 }
 
 /** Fallback when API key not configured */
-function aiMockResponse(question, userId) {
-  const context = buildContext(userId);
+async function aiMockResponse(question, userId) {
+  const context = await buildContext(userId);
   const lq = question.toLowerCase();
 
   if (lq.includes('gaz') && (lq.includes('tez') || lq.includes('ko\'p'))) {

@@ -21,9 +21,9 @@ function clearState(id) { states.delete(String(id)); }
 
 // ── Keyboards ─────────────────────────────────────────────────────────────────
 
-function mainMenu(userId) {
-  const isAdm = UserRepo.isAdmin(userId);
-  const unread = countUnread(userId);
+async function mainMenu(userId) {
+  const isAdm = await UserRepo.isAdmin(userId);
+  const unread = await countUnread(userId);
   const notifLabel = unread > 0 ? `🔔 Bildirishnomalar (${unread})` : '🔔 Bildirishnomalar';
   const rows = [
     [Markup.button.text('💰 Balanslar'), Markup.button.text('📊 Statistika')],
@@ -39,15 +39,15 @@ function mainMenu(userId) {
 // ── Balances ──────────────────────────────────────────────────────────────────
 
 async function showBalances(ctx) {
-  const user = UserRepo.findById(ctx.from.id);
-  const home = UserRepo.getActiveHome(ctx.from.id);
+  const user = await UserRepo.findById(ctx.from.id);
+  const home = await UserRepo.getActiveHome(ctx.from.id);
   if (!home) return ctx.reply('Hali uy qo\'shilmagan.');
 
   const komunallar = Object.values(home.komunallar || {});
   if (!komunallar.length) {
     return ctx.reply(
       `📭 <b>${home.name}</b> uchun hali kommunal qo\'shilmagan.\n\n➕ Kommunal qo\'shish tugmasini bosing.`,
-      { parse_mode: 'HTML', ...mainMenu(ctx.from.id) }
+      { parse_mode: 'HTML', ...(await mainMenu(ctx.from.id)) }
     );
   }
 
@@ -78,7 +78,7 @@ async function showBalances(ctx) {
 
 async function showStats(ctx) {
   const userId = ctx.from.id;
-  const home = UserRepo.getActiveHome(userId);
+  const home = await UserRepo.getActiveHome(userId);
   if (!home) return ctx.reply('Uy topilmadi.');
 
   const komunallar = Object.values(home.komunallar || {});
@@ -94,7 +94,7 @@ async function showStats(ctx) {
   }
 
   msg += `\n<b>Jami balans:</b> <code>${fmt(total)}</code>\n`;
-  msg += `<b>Jami to\'lovlar:</b> <code>${fmt(totalAmount(userId))}</code>\n\n`;
+  msg += `<b>Jami to\'lovlar:</b> <code>${fmt(await totalAmount(userId))}</code>\n\n`;
 
   if (compare.length) {
     msg += `<b>Bu oy vs o'tgan oy:</b>\n`;
@@ -113,7 +113,7 @@ async function showStats(ctx) {
 // ── Add Komunal flow ──────────────────────────────────────────────────────────
 
 async function startAddKomunal(ctx) {
-  const home = UserRepo.getActiveHome(ctx.from.id);
+  const home = await UserRepo.getActiveHome(ctx.from.id);
   const existing = Object.keys(home?.komunallar || {});
   const buttons = Object.entries(KOMUNAL_TYPES)
     .filter(([id]) => !existing.includes(id))
@@ -128,8 +128,8 @@ async function startAddKomunal(ctx) {
 
 async function showNotifications(ctx) {
   const userId = ctx.from.id;
-  const notifs = findByUser(userId, 15);
-  markRead(userId);
+  const notifs = await findByUser(userId, 15);
+  await markRead(userId);
 
   if (!notifs.length) return ctx.reply('📭 Hali bildirishnomalar yo\'q.');
 
@@ -141,13 +141,13 @@ async function showNotifications(ctx) {
     msg += `<b>${label}${read}</b> — ${date}\n${n.body}\n\n`;
   }
 
-  await ctx.reply(msg.slice(0, 4000), { parse_mode: 'HTML', ...mainMenu(userId) });
+  await ctx.reply(msg.slice(0, 4000), { parse_mode: 'HTML', ...(await mainMenu(userId)) });
 }
 
 // ── Reminder settings ─────────────────────────────────────────────────────────
 
 async function showReminderSettings(ctx) {
-  const user = UserRepo.findById(ctx.from.id);
+  const user = await UserRepo.findById(ctx.from.id);
   const s = user.reminderSettings;
   const msg = `⚙️ <b>Eslatma sozlamalari</b>\n\n` +
     `🔔 Bildirishnomalar: ${user.notifications ? '✅ Yoqilgan' : '❌ O\'chirilgan'}\n` +
@@ -169,7 +169,7 @@ async function showReminderSettings(ctx) {
 // ── Payment flow ──────────────────────────────────────────────────────────────
 
 async function startPayment(ctx) {
-  const home = UserRepo.getActiveHome(ctx.from.id);
+  const home = await UserRepo.getActiveHome(ctx.from.id);
   const komunallar = Object.values(home?.komunallar || {});
   if (!komunallar.length) return ctx.reply('Avval kommunal qo\'shing.');
 

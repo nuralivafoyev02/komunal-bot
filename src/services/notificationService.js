@@ -7,9 +7,9 @@ let _bot = null;
 function init(bot) { _bot = bot; }
 
 async function send(userId, type, title, body, komunalId = null) {
-  add({ userId, type, title, body, komunalId });
+  await add({ userId, type, title, body, komunalId });
 
-  const user = findById(userId);
+  const user = await findById(userId);
   if (!user || !_bot) return;
   if (!user.notifications) return;
 
@@ -21,7 +21,7 @@ async function send(userId, type, title, body, komunalId = null) {
 }
 
 async function broadcast(bot, { text, fileId, fileType, caption }) {
-  const users = findAll();
+  const users = await findAll();
   let sent = 0, failed = 0;
 
   for (const user of users) {
@@ -33,7 +33,7 @@ async function broadcast(bot, { text, fileId, fileType, caption }) {
       else if (fileType === 'animation') await bot.telegram.sendAnimation(user.chatId, fileId, { ...opts, caption });
       else if (fileType === 'document') await bot.telegram.sendDocument(user.chatId, fileId, { ...opts, caption });
 
-      add({ userId: user.userId, type: NOTIFICATION_TYPES.BROADCAST, title: 'Xabar', body: caption || text || '' });
+      await add({ userId: user.id || user.userId, type: NOTIFICATION_TYPES.BROADCAST, title: 'Xabar', body: caption || text || '' });
       sent++;
       await delay(55);
     } catch { failed++; }

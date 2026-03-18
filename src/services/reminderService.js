@@ -11,7 +11,7 @@ const fmt = n => Number(n || 0).toLocaleString('uz-UZ') + ' so\'m';
  * Called every hour by cron; but respects per-user dailyCheckTime.
  */
 async function runChecks(forceUserId = null) {
-  const users = forceUserId ? [findById(forceUserId)].filter(Boolean) : findAll();
+  const users = forceUserId ? [(await findById(forceUserId))].filter(Boolean) : await findAll();
 
   for (const user of users) {
     if (!user.notifications) continue;

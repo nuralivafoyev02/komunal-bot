@@ -47,7 +47,7 @@ async function handleScreenshot(ctx) {
     caption,
   });
 
-  const home = UserRepo.getActiveHome(userId);
+  const home = await UserRepo.getActiveHome(userId);
   const komunalButtons = Object.entries(KOMUNAL_TYPES).map(([id, t]) => [
     Markup.button.callback(`${t.emoji} ${t.name}`, `screenshot_komunal_${id}`)
   ]);
@@ -72,8 +72,8 @@ async function handleScreenshot(ctx) {
  */
 async function saveScreenshotPayment(ctx, komunalId, parsed) {
   const userId = ctx.from.id;
-  const user = UserRepo.findById(userId);
-  const home = UserRepo.getActiveHome(userId);
+  const user = await UserRepo.findById(userId);
+  const home = await UserRepo.getActiveHome(userId);
   if (!home) return ctx.reply('Uy topilmadi.');
 
   const komunal = home.komunallar[komunalId];
@@ -92,9 +92,9 @@ async function saveScreenshotPayment(ctx, komunalId, parsed) {
     amount, balance: newBal, date: parsed.date || new Date().toISOString(),
     type: 'topup', description: 'Chek/screenshot orqali'
   });
-  UserRepo.save(userId, user);
+  await UserRepo.save(userId, user);
 
-  add({
+  await add({
     userId, homeId: home.id, komunalId,
     komunalName: komunal.name, komunalEmoji: komunal.emoji,
     amount, balanceBefore: oldBal, balanceAfter: newBal,

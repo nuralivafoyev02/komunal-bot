@@ -5,16 +5,16 @@ import { add, findByUser } from '../../db/repositories/PaymentRepository.js';
 import { findByUser as _findByUser, markRead } from '../../db/repositories/NotificationRepository.js';
 
 // Get user
-router.get('/:userId', (req, res) => {
-  const user = findById(req.params.userId);
+router.get('/:userId', async (req, res) => {
+  const user = await findById(req.params.userId);
   if (!user) return res.status(404).json({ error: 'Not found' });
   res.json(user);
 });
 
 // Update komunal balance
-router.post('/:userId/komunal/:komunalId/balance', (req, res) => {
+router.post('/:userId/komunal/:komunalId/balance', async (req, res) => {
   const { userId, komunalId } = req.params;
-  const user = findById(userId);
+  const user = await findById(userId);
   if (!user) return res.status(404).json({ error: 'User not found' });
 
   const homeId = req.body.homeId || user.activeHomeId || 'default';
@@ -37,8 +37,8 @@ router.post('/:userId/komunal/:komunalId/balance', (req, res) => {
     type: diff >= 0 ? 'topup' : 'charge', description: 'Mini App orqali'
   });
 
-  save(userId, user);
-  add({
+  await save(userId, user);
+  await add({
     userId, homeId, komunalId, komunalName: komunal.name, komunalEmoji: komunal.emoji,
     amount: Math.abs(diff), balanceBefore: oldBal, balanceAfter: balance,
     type: diff >= 0 ? 'topup' : 'charge', source: 'miniapp',
@@ -48,24 +48,24 @@ router.post('/:userId/komunal/:komunalId/balance', (req, res) => {
 });
 
 // Get payment history
-router.get('/:userId/payments', (req, res) => {
-  const user = findById(req.params.userId);
+router.get('/:userId/payments', async (req, res) => {
+  const user = await findById(req.params.userId);
   if (!user) return res.status(404).json({ error: 'Not found' });
-  res.json(findByUser(req.params.userId));
+  res.json(await findByUser(req.params.userId));
 });
 
 // Get notifications
-router.get('/:userId/notifications', (req, res) => {
-  const user = findById(req.params.userId);
+router.get('/:userId/notifications', async (req, res) => {
+  const user = await findById(req.params.userId);
   if (!user) return res.status(404).json({ error: 'Not found' });
-  const notifs = _findByUser(req.params.userId, 30);
-  markRead(req.params.userId);
+  const notifs = await _findByUser(req.params.userId, 30);
+  await markRead(req.params.userId);
   res.json(notifs);
 });
 
 // Update reminder settings
-router.patch('/:userId/settings', (req, res) => {
-  const user = findById(req.params.userId);
+router.patch('/:userId/settings', async (req, res) => {
+  const user = await findById(req.params.userId);
   if (!user) return res.status(404).json({ error: 'Not found' });
   if (req.body.reminderSettings) {
     user.reminderSettings = { ...user.reminderSettings, ...req.body.reminderSettings };
@@ -73,7 +73,7 @@ router.patch('/:userId/settings', (req, res) => {
   if (typeof req.body.notifications === 'boolean') {
     user.notifications = req.body.notifications;
   }
-  save(req.params.userId, user);
+  await save(req.params.userId, user);
   res.json({ success: true });
 });
 

@@ -26,11 +26,11 @@ register(bot);
 
 // ── /start ────────────────────────────────────────────────────────────────────
 bot.start(async ctx => {
-  const existing = UserRepo.findById(ctx.from.id);
+  const existing = await UserRepo.findById(ctx.from.id);
   if (existing) {
     return ctx.reply(
       `Xush kelibsiz, <b>${existing.firstName}</b>! 👋`,
-      { parse_mode: 'HTML', ...mainMenu(ctx.from.id) }
+      { parse_mode: 'HTML', ...(await mainMenu(ctx.from.id)) }
     );
   }
   setState(ctx.from.id, { step: 'awaiting_phone' });
@@ -54,19 +54,19 @@ bot.on('contact', async ctx => {
   if (contact.user_id && contact.user_id !== ctx.from.id)
     return ctx.reply('❌ Faqat o\'z raqamingizni yuboring.');
 
-  UserRepo.create(ctx, contact.phone_number);
+  await UserRepo.create(ctx, contact.phone_number);
   clearState(ctx.from.id);
 
   await ctx.reply(
     `✅ <b>Muvaffaqiyatli ro\'yxatdan o\'tdingiz!</b>\n\n📞 ${contact.phone_number}\n\n➕ Komunal qo\'shish tugmasini bosing.`,
-    { parse_mode: 'HTML', ...mainMenu(ctx.from.id) }
+    { parse_mode: 'HTML', ...(await mainMenu(ctx.from.id)) }
   );
 });
 
 // ── /cancel ───────────────────────────────────────────────────────────────────
-bot.command('cancel', ctx => {
+bot.command('cancel', async ctx => {
   clearState(ctx.from.id);
-  ctx.reply('❌ Bekor qilindi.', mainMenu(ctx.from.id));
+  ctx.reply('❌ Bekor qilindi.', await mainMenu(ctx.from.id));
 });
 
 // ── Shortcut commands ─────────────────────────────────────────────────────────
@@ -82,7 +82,7 @@ bot.command('ai', async ctx => {
 bot.on('photo', async ctx => {
   const state = getState(ctx.from.id);
   if (state?.step === 'admin_awaiting_broadcast') return handleAdminMedia(ctx, 'photo');
-  if (!UserRepo.findById(ctx.from.id)) return;
+  if (!(await UserRepo.findById(ctx.from.id))) return;
   await handleScreenshot(ctx);
 });
 
@@ -102,21 +102,21 @@ bot.on('text', async ctx => {
 
   if (state) return handleState(ctx, state, text);
 
-  const user = UserRepo.findById(userId);
+  const user = await UserRepo.findById(userId);
   if (!user) return ctx.reply('Boshlash uchun /start bosing.');
 
   switch (text) {
-    case '💰 Balanslar': return showBalances(ctx);
-    case '📊 Statistika': return showStats(ctx);
-    case '➕ Komunal qo\'shish': return startAddKomunal(ctx);
-    case '💳 To\'lov qilish': return startPayment(ctx);
-    case '⚙️ Sozlamalar': return showReminderSettings(ctx);
+    case '💰 Balanslar': return await showBalances(ctx);
+    case '📊 Statistika': return await showStats(ctx);
+    case '➕ Komunal qo\'shish': return await startAddKomunal(ctx);
+    case '💳 To\'lov qilish': return await startPayment(ctx);
+    case '⚙️ Sozlamalar': return await showReminderSettings(ctx);
     case '🤖 AI Yordam': {
       setState(userId, { step: 'ai_awaiting_question' });
       return ctx.reply('🤖 <b>AI Yordamchi</b>\n\nSavolingizni yozing:', { parse_mode: 'HTML' });
     }
-    case 'ℹ️ Yordam': return showHelp(ctx);
-    case '👑 Admin Panel': return UserRepo.isAdmin(userId) ? ctx.reply('Admin buyruqlari:\n/admin /users /stats /message /alert') : null;
+    case 'ℹ️ Yordam': return await showHelp(ctx);
+    case '👑 Admin Panel': return (await UserRepo.isAdmin(userId)) ? ctx.reply('Admin buyruqlari:\n/admin /users /stats /message /alert') : null;
     default: {
       const notifLabel = text.match(/🔔 Bildirishnomalar/);
       if (notifLabel) return showNotifications(ctx);
@@ -127,7 +127,7 @@ bot.on('text', async ctx => {
 // ── State machine ──────────────────────────────────────────────────────────────
 async function handleState(ctx, state, text) {
   const userId = ctx.from.id;
-  const user = UserRepo.findById(userId);
+  const user = await UserRepo.findById(userId);
 
   // ── Komunal add flow ─────────────────────────────────────────────────────
   if (state.step === 'add_account') {
@@ -152,7 +152,7 @@ async function handleState(ctx, state, text) {
       const m = text.match(/(\d{2})[./](\d{2})[./](\d{4})/);
       if (m) dueDate = new Date(`${m[3]}-${m[2]}-${m[1]}`).toISOString();
     }
-    const home = UserRepo.getActiveHome(userId);
+    const home = await UserRepo.getActiveHome(userId);
     const kt = KOMUNAL_TYPES[state.komunalType];
     if (!user.homes[user.activeHomeId].komunallar) user.homes[user.activeHomeId].komunallar = {};
     user.homes[user.activeHomeId].komunallar[state.komunalType] = {
@@ -161,13 +161,13 @@ async function handleState(ctx, state, text) {
       minAlert: state.minAlert, nextPaymentDate: dueDate,
       payments: [], addedAt: new Date().toISOString()
     };
-    UserRepo.save(userId, user);
+    await UserRepo.save(userId, user);
     clearState(userId);
     return ctx.reply(
       `✅ <b>${kt.emoji} ${kt.name}</b> qo\'shildi!\n\n` +
       `Hisob: <code>${state.accountId}</code>\nBalans: <code>${fmt(state.balance)}</code>` +
       (dueDate ? `\nMuddat: ${fmtDate(dueDate)}` : ''),
-      { parse_mode: 'HTML', ...mainMenu(userId) }
+      { parse_mode: 'HTML', ...(await mainMenu(userId)) }
     );
   }
 
@@ -175,21 +175,21 @@ async function handleState(ctx, state, text) {
   if (state.step === 'update_balance') {
     const newBal = parseAmount(text);
     if (isNaN(newBal)) return ctx.reply('❌ Faqat raqam kiriting.');
-    const home = UserRepo.getActiveHome(userId);
+    const home = await UserRepo.getActiveHome(userId);
     const k = home.komunallar[state.komunalId];
     if (!k) return ctx.reply('Kommunal topilmadi.');
     const oldBal = k.balance;
     k.balance = newBal;
     if (!k.payments) k.payments = [];
     k.payments.push({ amount: Math.abs(newBal - oldBal), balance: newBal, date: new Date().toISOString(), type: newBal > oldBal ? 'topup' : 'charge', description: 'Bot orqali' });
-    UserRepo.save(userId, user);
-    add({ userId, homeId: home.id, komunalId: k.id, komunalName: k.name, komunalEmoji: k.emoji, amount: Math.abs(newBal - oldBal), balanceBefore: oldBal, balanceAfter: newBal, type: newBal > oldBal ? 'topup' : 'charge', source: 'bot' });
+    await UserRepo.save(userId, user);
+    await add({ userId, homeId: home.id, komunalId: k.id, komunalName: k.name, komunalEmoji: k.emoji, amount: Math.abs(newBal - oldBal), balanceBefore: oldBal, balanceAfter: newBal, type: newBal > oldBal ? 'topup' : 'charge', source: 'bot' });
     clearState(userId);
     const isLow = newBal <= k.minAlert;
     await ctx.reply(
       `✅ <b>${k.emoji} ${k.name}</b> yangilandi!\n\nYangi balans: <code>${fmt(newBal)}</code>` +
       (isLow ? '\n\n⚠️ Balans minimal chegaradan past!' : ''),
-      { parse_mode: 'HTML', ...mainMenu(userId) }
+      { parse_mode: 'HTML', ...(await mainMenu(userId)) }
     );
   }
 
@@ -198,11 +198,11 @@ async function handleState(ctx, state, text) {
     const m = text.match(/(\d{2})[./](\d{2})[./](\d{4})/);
     if (!m) return ctx.reply('❌ Format: DD.MM.YYYY — masalan: 25.01.2026');
     const date = new Date(`${m[3]}-${m[2]}-${m[1]}`).toISOString();
-    const home = UserRepo.getActiveHome(userId);
+    const home = await UserRepo.getActiveHome(userId);
     const k = home.komunallar[state.komunalId];
-    if (k) { k.nextPaymentDate = date; UserRepo.save(userId, user); }
+    if (k) { k.nextPaymentDate = date; await UserRepo.save(userId, user); }
     clearState(userId);
-    return ctx.reply(`✅ To\'lov muddati: <code>${fmtDate(date)}</code>`, { parse_mode: 'HTML', ...mainMenu(userId) });
+    return ctx.reply(`✅ To\'lov muddati: <code>${fmtDate(date)}</code>`, { parse_mode: 'HTML', ...(await mainMenu(userId)) });
   }
 
   // ── AI question ───────────────────────────────────────────────────────────
@@ -225,7 +225,7 @@ async function handleState(ctx, state, text) {
 
   // ── Admin broadcast text ──────────────────────────────────────────────────
   if (state.step === 'admin_awaiting_broadcast') {
-    const count = UserRepo.count();
+    const count = await UserRepo.count();
     setState(userId, { step: 'admin_confirm_broadcast', text, fileId: null, fileType: null, caption: null });
     return ctx.reply(
       `📢 <b>Xabar mazmuni:</b>\n\n${text}\n\n👥 ${count} ta foydalanuvchiga yuboriladi. Tasdiqlaysizmi?`,
@@ -242,7 +242,7 @@ bot.on('callback_query', async ctx => {
 
   if (data === 'cancel') { clearState(userId); return ctx.editMessageText('❌ Bekor qilindi.'); }
 
-  const user = UserRepo.findById(userId);
+  const user = await UserRepo.findById(userId);
 
   // Add komunal
   if (data.startsWith('add_k_')) {
@@ -256,14 +256,16 @@ bot.on('callback_query', async ctx => {
   if (data.startsWith('bal_update_')) {
     const id = data.slice(11);
     setState(userId, { step: 'update_balance', komunalId: id });
-    const k = UserRepo.getActiveHome(userId)?.komunallar[id];
+    const home = await UserRepo.getActiveHome(userId);
+    const k = home?.komunallar[id];
     return ctx.editMessageText(`${k?.emoji} <b>${k?.name}</b>\nHozirgi: <code>${fmt(k?.balance)}</code>\n\nYangi balansni kiriting:`, { parse_mode: 'HTML' });
   }
 
   // History
   if (data.startsWith('bal_history_')) {
     const id = data.slice(12);
-    const k = UserRepo.getActiveHome(userId)?.komunallar[id];
+    const home = await UserRepo.getActiveHome(userId);
+    const k = home?.komunallar[id];
     const pays = [...(k?.payments || [])].reverse().slice(0, 10);
     let msg = `${k?.emoji} <b>${k?.name} — Tarix</b>\n\n`;
     if (!pays.length) msg += 'Hali to\'lovlar yo\'q.';
@@ -274,17 +276,18 @@ bot.on('callback_query', async ctx => {
   // Delete komunal
   if (data.startsWith('bal_delete_')) {
     const id = data.slice(11);
-    const k = UserRepo.getActiveHome(userId)?.komunallar[id];
+    const home = await UserRepo.getActiveHome(userId);
+    const k = home?.komunallar[id];
     setState(userId, { step: 'confirm_delete', komunalId: id });
     return ctx.editMessageText(`${k?.emoji} <b>${k?.name}</b>ni o\'chirishni tasdiqlaysizmi?`, { parse_mode: 'HTML', ...Markup.inlineKeyboard([[Markup.button.callback('✅ Ha', 'confirm_delete'), Markup.button.callback('❌ Yo\'q', 'cancel')]]) });
   }
   if (data === 'confirm_delete') {
     const st = getState(userId);
     if (st?.step !== 'confirm_delete') return;
-    const home = UserRepo.getActiveHome(userId);
+    const home = await UserRepo.getActiveHome(userId);
     const name = home?.komunallar[st.komunalId]?.name;
     delete user.homes[user.activeHomeId].komunallar[st.komunalId];
-    UserRepo.save(userId, user);
+    await UserRepo.save(userId, user);
     clearState(userId);
     return ctx.editMessageText(`✅ <b>${name}</b> o\'chirildi.`, { parse_mode: 'HTML' });
   }
@@ -292,7 +295,8 @@ bot.on('callback_query', async ctx => {
   // Payment provider selection
   if (data.startsWith('pay_k_')) {
     const id = data.slice(6);
-    const k = UserRepo.getActiveHome(userId)?.komunallar[id];
+    const home = await UserRepo.getActiveHome(userId);
+    const k = home?.komunallar[id];
     const providers = PaymentSvc.getProviders();
     const buttons = providers.map(p => [Markup.button.callback(`${p.emoji} ${p.name}`, `pay_prov_${p.id}_${id}`)]);
     buttons.push([Markup.button.callback('❌ Bekor', 'cancel')]);
@@ -300,7 +304,8 @@ bot.on('callback_query', async ctx => {
   }
   if (data.startsWith('pay_prov_')) {
     const [, , provider, komunalId] = data.split('_');
-    const k = UserRepo.getActiveHome(userId)?.komunallar[komunalId];
+    const home = await UserRepo.getActiveHome(userId);
+    const k = home?.komunallar[komunalId];
     setState(userId, { step: 'payment_amount', provider, komunalId });
     return ctx.editMessageText(`💳 ${k?.name}\n\nTo\'lov summasi (so\'mda):`, { parse_mode: 'HTML' });
   }
@@ -325,28 +330,28 @@ bot.on('callback_query', async ctx => {
   // Reminder toggles
   if (data === 'toggle_notif') {
     user.notifications = !user.notifications;
-    UserRepo.save(userId, user);
+    await UserRepo.save(userId, user);
     return ctx.answerCbQuery(user.notifications ? '🔔 Yoqildi' : '🔕 O\'chirildi');
   }
   if (data === 'toggle_low') {
     user.reminderSettings.lowBalanceAlert = !user.reminderSettings.lowBalanceAlert;
-    UserRepo.save(userId, user);
+    await UserRepo.save(userId, user);
     return ctx.answerCbQuery('Yangilandi');
   }
   if (data === 'toggle_due') {
     user.reminderSettings.paymentDueAlert = !user.reminderSettings.paymentDueAlert;
-    UserRepo.save(userId, user);
+    await UserRepo.save(userId, user);
     return ctx.answerCbQuery('Yangilandi');
   }
   if (data.startsWith('days_')) {
     const days = parseInt(data.split('_')[1]);
     user.reminderSettings.daysBeforeDue = days;
-    UserRepo.save(userId, user);
+    await UserRepo.save(userId, user);
     return ctx.answerCbQuery(`${days} kun oldin`);
   }
 
   // Broadcast send
-  if (data === 'broadcast_send' && UserRepo.isAdmin(userId)) {
+  if (data === 'broadcast_send' && (await UserRepo.isAdmin(userId))) {
     const st = getState(userId);
     if (!st) return;
     await ctx.editMessageText('📤 Yuborilmoqda...');
@@ -367,7 +372,7 @@ async function handleAdminMedia(ctx, fileType) {
   else if (fileType === 'animation') fileId = ctx.message.animation.file_id;
   else if (fileType === 'document') fileId = ctx.message.document.file_id;
   const caption = ctx.message.caption || '';
-  const count = UserRepo.count();
+  const count = await UserRepo.count();
   setState(userId, { step: 'admin_confirm_broadcast', fileId, fileType, caption, text: null });
   await ctx.reply(
     `📢 <b>Media xabar</b>\n\nTur: ${fileType}\n${caption ? `Izoh: ${caption}\n` : ''}👥 ${count} ta foydalanuvchiga yuboriladi.`,

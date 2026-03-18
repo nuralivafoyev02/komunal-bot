@@ -1,80 +1,119 @@
-'use strict';
-import { existsSync, mkdirSync, writeFileSync, readFileSync } from 'fs';
-import { join, dirname } from 'path';
-import { fileURLToPath } from 'url';
+import { createClient } from '@supabase/supabase-js';
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
+const supabaseUrl = process.env.SUPABASE_URL;
+const supabaseKey = process.env.SUPABASE_KEY;
 
-const IS_VERCEL = !!(process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME);
-const DB_DIR = IS_VERCEL ? '/tmp/json' : join(__dirname, 'json');
-
-if (!existsSync(DB_DIR)) {
-  mkdirSync(DB_DIR, { recursive: true });
+if (!supabaseUrl || !supabaseKey) {
+  console.warn('⚠️ SUPABASE_URL yoki SUPABASE_KEY topilmadi. .env faylini tekshiring.');
 }
 
+const supabase = createClient(supabaseUrl || '', supabaseKey || '');
+
 function createRepository(collection) {
-  const filePath = join(DB_DIR, `${collection}.json`);
-
-  if (!existsSync(filePath)) {
-    try {
-      writeFileSync(filePath, JSON.stringify({}, null, 2));
-    } catch (e) {
-      console.warn(`Warning: Could not create initial file ${filePath}. This is expected on read-only systems if not using /tmp.`);
-    }
-  }
-
-  function read() {
-    try {
-      if (!existsSync(filePath)) return {};
-      return JSON.parse(readFileSync(filePath, 'utf8'));
-    } catch (e) {
-      console.error(`Error reading ${collection}:`, e);
-      return {};
-    }
-  }
-
-  function write(data) {
-    try {
-      writeFileSync(filePath, JSON.stringify(data, null, 2));
-    } catch (e) {
-      console.error(`Error writing ${collection}:`, e);
-      if (e.code === 'EROFS') {
-        console.error('FATAL: Attempted to write to a read-only filesystem. Are you sure DB_DIR is set correctly for Vercel?');
-      }
-    }
-  }
-
   return {
-    findById: (id) => {
-      const data = read();
-      return data[String(id)] || null;
+    findById: async (id) => {
+      const { data, error } = await supabase
+        .from(collection)
+        .select('*')
+        .eq('id', String(id))
+        .single();
+      
+      if (error && error.code !== 'PGRST116') { // PGRST116 is "not found"
+        console.error(`Error finding ${collection} by id ${id}:`, error);
+      }
+      return data || null;
     },
-    findMany: (predicate) => {
-      return Object.values(read()).filter(predicate);
+    findMany: async (filter = {}) => {
+      let query = supabase.from(collection).select('*');
+      
+      // Basic filter support (equality)
+      for (const [key, value] of Object.entries(filter)) {
+        if (typeof value === 'function') {
+           // Warning: predicate filtering is not supported in Supabase easily.
+           // We would need to fetch all and filter locally, which is inefficient.
+           // For migration, we'll fetch all and filter locally if a function is passed.
+           const { data, error } = await query;
+           if (error) throw error;
+           return data.filter(value);
+        }
+        query = query.eq(key, value);
+      }
+      
+      const { data, error } = await query;
+      if (error) {
+        console.error(`Error finding many in ${collection}:`, error);
+        return [];
+      }
+      return data || [];
     },
-    save: (id, record) => {
-      const data = read();
-      data[String(id)] = record;
-      write(data);
-      return record;
+    save: async (id, record) => {
+      const { data, error } = await supabase
+        .from(collection)
+        .upsert({ ...record, id: String(id), updated_at: new Date().toISOString() })
+        .select()
+        .single();
+      
+      if (error) {
+        console.error(`Error saving to ${collection}:`, error);
+        throw error;
+      }
+      return data;
     },
-    remove: (id) => {
-      const data = read();
-      delete data[String(id)];
-      write(data);
+    remove: async (id) => {
+      const { error } = await supabase
+        .from(collection)
+        .delete()
+        .eq('id', String(id));
+      
+      if (error) {
+        console.error(`Error removing from ${collection}:`, error);
+        throw error;
+      }
     },
-    findAll: () => {
-      return Object.values(read());
+    findAll: async () => {
+      const { data, error } = await supabase
+        .from(collection)
+        .select('*');
+      
+      if (error) {
+        console.error(`Error fetching all from ${collection}:`, error);
+        return [];
+      }
+      return data || [];
     },
-    values: () => {
-      return Object.values(read());
+    values: async () => {
+      const { data, error } = await supabase
+        .from(collection)
+        .select('*');
+      
+      if (error) {
+        console.error(`Error fetching values from ${collection}:`, error);
+        return [];
+      }
+      return data || [];
     },
-    count: () => {
-      return Object.keys(read()).length;
+    count: async () => {
+      const { count, error } = await supabase
+        .from(collection)
+        .select('*', { count: 'exact', head: true });
+      
+      if (error) {
+        console.error(`Error counting ${collection}:`, error);
+        return 0;
+      }
+      return count || 0;
     },
-    all: () => {
-      return read();
+    all: async () => {
+      const { data, error } = await supabase
+        .from(collection)
+        .select('*');
+      
+      if (error) {
+        console.error(`Error fetching all (obj) from ${collection}:`, error);
+        return {};
+      }
+      // Convert to object {id: record} for backward compatibility where needed
+      return (data || []).reduce((acc, curr) => ({ ...acc, [curr.id]: curr }), {});
     }
   };
 }

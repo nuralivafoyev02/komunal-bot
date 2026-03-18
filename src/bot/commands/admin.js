@@ -20,7 +20,7 @@ function register(bot) {
   bot.command('users', requireAdmin, async ctx => {
     const args = ctx.message.text.split(' ');
     const filter = args[1]; // active | debt | premium | free
-    let users = findAll();
+    let users = await findAll();
 
     if (filter === 'premium') users = users.filter(u => u.subscription === 'premium');
     if (filter === 'free') users = users.filter(u => u.subscription !== 'premium');
@@ -38,11 +38,11 @@ function register(bot) {
 
   // ── /stats ──────────────────────────────────────────────────────────────────
   bot.command('stats', requireAdmin, async ctx => {
-    const users = findAll();
-    const payments = findAllPayments();
+    const users = await findAll();
+    const payments = await findAllPayments();
     const total = payments.reduce((s, p) => s + (p.type === 'topup' ? p.amount : 0), 0);
     const prem = users.filter(u => u.subscription === 'premium').length;
-    const notifs = countNotifications();
+    const notifs = await countNotifications();
 
     await ctx.reply(
       `📊 <b>Bot statistikasi</b>\n\n` +
@@ -72,7 +72,7 @@ function register(bot) {
   bot.command('setadmin', requireAdmin, async ctx => {
     const id = ctx.message.text.split(' ')[1];
     if (!id) return ctx.reply('Foydalanish: /setadmin <userId>');
-    addAdmin(Number(id));
+    await addAdmin(Number(id));
     ctx.reply(`✅ ${id} admin qilindi.`);
   });
 
@@ -80,9 +80,9 @@ function register(bot) {
   bot.command('setpremium', requireAdmin, async ctx => {
     const id = ctx.message.text.split(' ')[1];
     if (!id) return ctx.reply('Foydalanish: /setpremium <userId>');
-    const user = findById(id);
+    const user = await findById(id);
     if (!user) return ctx.reply('Foydalanuvchi topilmadi.');
-    save(id, { ...user, subscription: 'premium', subscriptionExpiry: new Date(Date.now() + 30 * 86400000).toISOString() });
+    await save(id, { ...user, subscription: 'premium', subscriptionExpiry: new Date(Date.now() + 30 * 86400000).toISOString() });
     ctx.reply(`⭐ ${user.firstName} (${id}) ga premium berildi.`);
   });
 
@@ -95,8 +95,8 @@ function register(bot) {
 }
 
 async function showAdminDashboard(ctx) {
-  const users = findAll();
-  const payments = findAllPayments();
+  const users = await findAll();
+  const payments = await findAllPayments();
   const total = payments.reduce((s, p) => s + (p.type === 'topup' ? p.amount : 0), 0);
 
   await ctx.reply(
@@ -114,8 +114,8 @@ async function showAdminDashboard(ctx) {
   );
 }
 
-function requireAdmin(ctx, next) {
-  if (!isAdmin(ctx.from?.id)) return ctx.reply('❌ Ruxsat yo\'q.');
+async function requireAdmin(ctx, next) {
+  if (!(await isAdmin(ctx.from?.id))) return ctx.reply('❌ Ruxsat yo\'q.');
   return next();
 }
 

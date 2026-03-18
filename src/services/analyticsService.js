@@ -6,8 +6,8 @@ import { KOMUNAL_TYPES } from '../config/constants.js';
  * Returns monthly totals grouped by komunalId for a user.
  * { '2025-01': { elektr: 45000, gaz: 12000 }, ... }
  */
-function getMonthlyTotals(userId, months = 6) {
-  const payments = findByUser(userId).filter(p => p.type === 'topup');
+async function getMonthlyTotals(userId, months = 6) {
+  const payments = (await findByUser(userId)).filter(p => p.type === 'topup');
   const result = {};
 
   for (let i = months - 1; i >= 0; i--) {
@@ -25,17 +25,13 @@ function getMonthlyTotals(userId, months = 6) {
   return result;
 }
 
-/**
- * Compare current month vs previous month.
- * Returns array of { komunalId, name, emoji, thisMonth, lastMonth, diff, pct, trend }
- */
-function compareMonths(userId) {
+async function compareMonths(userId) {
   const now = new Date();
   const thisKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
   const prev = new Date(now); prev.setMonth(prev.getMonth() - 1);
   const prevKey = `${prev.getFullYear()}-${String(prev.getMonth() + 1).padStart(2, '0')}`;
 
-  const monthly = getMonthlyTotals(userId, 2);
+  const monthly = await getMonthlyTotals(userId, 2);
   const thisMonth = monthly[thisKey] || {};
   const lastMonth = monthly[prevKey] || {};
 
@@ -48,29 +44,20 @@ function compareMonths(userId) {
   }).filter(r => r.thisMonth > 0 || r.lastMonth > 0);
 }
 
-/**
- * Top komunal by spending this month.
- */
-function topKomunal(userId) {
-  const cmp = compareMonths(userId);
+async function topKomunal(userId) {
+  const cmp = await compareMonths(userId);
   return [...cmp].sort((a, b) => b.thisMonth - a.thisMonth)[0] || null;
 }
 
-/**
- * Total spending per komunal (all time).
- */
-function allTimeTotals(userId) {
-  const payments = findByUser(userId).filter(p => p.type === 'topup');
+async function allTimeTotals(userId) {
+  const payments = (await findByUser(userId)).filter(p => p.type === 'topup');
   const totals = {};
   for (const p of payments) totals[p.komunalId] = (totals[p.komunalId] || 0) + p.amount;
   return totals;
 }
 
-/**
- * Average monthly spending per komunal.
- */
-function averageMonthly(userId) {
-  const totals = getMonthlyTotals(userId, 6);
+async function averageMonthly(userId) {
+  const totals = await getMonthlyTotals(userId, 6);
   const months = Object.values(totals);
   const avg = {};
   for (const id of Object.keys(KOMUNAL_TYPES)) {
@@ -80,12 +67,9 @@ function averageMonthly(userId) {
   return avg;
 }
 
-/**
- * Generate human-readable insight string for AI / bot messages.
- */
-function generateInsight(userId) {
-  const cmp = compareMonths(userId);
-  const top = topKomunal(userId);
+async function generateInsight(userId) {
+  const cmp = await compareMonths(userId);
+  const top = await topKomunal(userId);
   const lines = [];
 
   for (const r of cmp) {
