@@ -75,6 +75,7 @@ router.patch('/:userId/settings', async (req, res) => {
   if (typeof req.body.notifications === 'boolean') {
     user.notifications = req.body.notifications;
   }
+  await save(req.params.userId, user);
   res.json({ success: true });
 });
 

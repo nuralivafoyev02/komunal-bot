@@ -179,19 +179,15 @@ async function startPayment(ctx) {
   await ctx.reply('💳 <b>Qaysi kommunal uchun to\'lov?</b>', { parse_mode: 'HTML', ...Markup.inlineKeyboard(buttons) });
 }
 
-// ── Premium Plans ─────────────────────────────────────────────────────────────
-
-// ── Premium Plans ─────────────────────────────────────────────────────────────
-
 async function showPremiumPlans(ctxOrBot, userId = null) {
   const isCtx = !!ctxOrBot.reply;
-  const bot = isCtx ? ctxOrBot.telegram : ctxOrBot;
   const uid = isCtx ? ctxOrBot.from.id : userId;
   const chat = isCtx ? ctxOrBot.chat.id : userId;
 
   const user = await UserRepo.findById(uid);
   if (user?.subscription === 'premium') {
-    return isCtx ? ctxOrBot.reply('⭐ Sizda allaqachon Premium tarif yoqilgan!') : bot.sendMessage(chat, '⭐ Sizda allaqachon Premium tarif yoqilgan!');
+    const msgAlready = '⭐ Sizda allaqachon Premium tarif yoqilgan!';
+    return isCtx ? ctxOrBot.reply(msgAlready) : ctxOrBot.telegram.sendMessage(chat, msgAlready);
   }
 
   const { PREMIUM_PLANS } = await import('../../config/constants.js');
@@ -208,7 +204,7 @@ async function showPremiumPlans(ctxOrBot, userId = null) {
   if (isCtx) {
     await ctxOrBot.reply(msg, { parse_mode: 'HTML', ...Markup.inlineKeyboard(buttons) });
   } else {
-    await bot.sendMessage(chat, msg, { parse_mode: 'HTML', ...Markup.inlineKeyboard(buttons) });
+    await ctxOrBot.telegram.sendMessage(chat, msg, { parse_mode: 'HTML', ...Markup.inlineKeyboard(buttons) });
   }
 }
 
