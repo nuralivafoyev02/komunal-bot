@@ -1,26 +1,26 @@
 'use strict';
-const Anthropic   = require('@anthropic-ai/sdk');
-const Analytics   = require('./analyticsService');
-const UserRepo    = require('../db/repositories/UserRepository');
-const PaymentRepo = require('../db/repositories/PaymentRepository');
-const { KOMUNAL_TYPES } = require('../config/constants');
+import Anthropic from '@anthropic-ai/sdk';
+import { compareMonths, generateInsight } from './analyticsService';
+import { findById, getActiveHome } from '../db/repositories/UserRepository';
+import { findByUser } from '../db/repositories/PaymentRepository';
+import { KOMUNAL_TYPES } from '../config/constants';
 
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
-const fmt  = n => Number(n || 0).toLocaleString('uz-UZ') + ' so\'m';
+const fmt = n => Number(n || 0).toLocaleString('uz-UZ') + ' so\'m';
 const fmtDate = d => new Date(d).toLocaleDateString('uz-UZ');
 
 /**
  * Build a rich context string from user's komunal data to feed the AI.
  */
 function buildContext(userId) {
-  const user     = UserRepo.findById(userId);
+  const user = findById(userId);
   if (!user) return 'Foydalanuvchi ma\'lumotlari topilmadi.';
 
-  const home     = UserRepo.getActiveHome(userId);
-  const payments = PaymentRepo.findByUser(userId).slice(0, 30);
-  const compare  = Analytics.compareMonths(userId);
-  const insight  = Analytics.generateInsight(userId);
+  const home = getActiveHome(userId);
+  const payments = findByUser(userId).slice(0, 30);
+  const compare = compareMonths(userId);
+  const insight = generateInsight(userId);
   const komunallar = Object.values(home?.komunallar || {});
 
   const lines = [
@@ -80,10 +80,10 @@ Qoidalar:
 
   try {
     const response = await client.messages.create({
-      model:      'claude-sonnet-4-20250514',
+      model: 'claude-sonnet-4-20250514',
       max_tokens: 500,
-      messages:   [{ role: 'user', content: userQuestion }],
-      system:     systemPrompt,
+      messages: [{ role: 'user', content: userQuestion }],
+      system: systemPrompt,
     });
     return response.content[0]?.text || 'Javob olishda xatolik yuz berdi.';
   } catch (e) {
@@ -94,24 +94,24 @@ Qoidalar:
 
 /** Fallback when API key not configured */
 function aiMockResponse(question, userId) {
-  const context  = buildContext(userId);
-  const lq       = question.toLowerCase();
+  const context = buildContext(userId);
+  const lq = question.toLowerCase();
 
   if (lq.includes('gaz') && (lq.includes('tez') || lq.includes('ko\'p'))) {
     return '🔥 <b>Gaz sarfi haqida:</b>\n\nGaz tez tugashining asosiy sabablari:\n\n' +
-           '• Qish oylarida isitish tizimi ko\'proq gaz ishlatadi\n' +
-           '• Qozonxona yoki pechning samaradorligi past bo\'lishi\n' +
-           '• Gaz plitada uzoq vaqt pishirish\n\n' +
-           'Tavsiya: har oygi sarfingizni kuzatib boring, o\'tgan oy bilan solishtiring.';
+      '• Qish oylarida isitish tizimi ko\'proq gaz ishlatadi\n' +
+      '• Qozonxona yoki pechning samaradorligi past bo\'lishi\n' +
+      '• Gaz plitada uzoq vaqt pishirish\n\n' +
+      'Tavsiya: har oygi sarfingizni kuzatib boring, o\'tgan oy bilan solishtiring.';
   }
   if (lq.includes('elektr') && (lq.includes('tez') || lq.includes('ko\'p'))) {
     return '⚡ <b>Elektr sarfi haqida:</b>\n\nKo\'p elektr sarflanadigan qurilmalar:\n\n' +
-           '• Konditsioner / isitgich\n• Suv qizdirgich\n• Kir yuvish mashinasi\n\n' +
-           'Tavsiya: kechasi arzon tarifda qurilmalarni ishlatish tejamkor.';
+      '• Konditsioner / isitgich\n• Suv qizdirgich\n• Kir yuvish mashinasi\n\n' +
+      'Tavsiya: kechasi arzon tarifda qurilmalarni ishlatish tejamkor.';
   }
 
   return `🤖 <b>AI Yordamchi</b>\n\nSavolingizga javob berish uchun ANTHROPIC_API_KEY sozlanishi kerak.\n\n` +
-         `Hozircha mavjud ma'lumotlar asosida aytishim mumkinki, sizning kommunallaringiz holatini kuzatib borish yaxshi natija beradi.`;
+    `Hozircha mavjud ma'lumotlar asosida aytishim mumkinki, sizning kommunallaringiz holatini kuzatib borish yaxshi natija beradi.`;
 }
 
-module.exports = { ask, buildContext };
+export default { ask, buildContext };

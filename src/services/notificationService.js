@@ -1,15 +1,15 @@
 'use strict';
-const NotifRepo  = require('../db/repositories/NotificationRepository');
-const UserRepo   = require('../db/repositories/UserRepository');
-const { NOTIFICATION_TYPES } = require('../config/constants');
+import { add } from '../db/repositories/NotificationRepository';
+import { findById, findAll } from '../db/repositories/UserRepository';
+import { NOTIFICATION_TYPES } from '../config/constants';
 
 let _bot = null;
 function init(bot) { _bot = bot; }
 
 async function send(userId, type, title, body, komunalId = null) {
-  NotifRepo.add({ userId, type, title, body, komunalId });
+  add({ userId, type, title, body, komunalId });
 
-  const user = UserRepo.findById(userId);
+  const user = findById(userId);
   if (!user || !_bot) return;
   if (!user.notifications) return;
 
@@ -21,19 +21,19 @@ async function send(userId, type, title, body, komunalId = null) {
 }
 
 async function broadcast(bot, { text, fileId, fileType, caption }) {
-  const users = UserRepo.findAll();
+  const users = findAll();
   let sent = 0, failed = 0;
 
   for (const user of users) {
     try {
       const opts = { parse_mode: 'HTML' };
-      if      (!fileId)                await bot.telegram.sendMessage(user.chatId, text, opts);
-      else if (fileType === 'photo')     await bot.telegram.sendPhoto(user.chatId, fileId, { ...opts, caption });
-      else if (fileType === 'video')     await bot.telegram.sendVideo(user.chatId, fileId, { ...opts, caption });
+      if (!fileId) await bot.telegram.sendMessage(user.chatId, text, opts);
+      else if (fileType === 'photo') await bot.telegram.sendPhoto(user.chatId, fileId, { ...opts, caption });
+      else if (fileType === 'video') await bot.telegram.sendVideo(user.chatId, fileId, { ...opts, caption });
       else if (fileType === 'animation') await bot.telegram.sendAnimation(user.chatId, fileId, { ...opts, caption });
-      else if (fileType === 'document')  await bot.telegram.sendDocument(user.chatId, fileId, { ...opts, caption });
+      else if (fileType === 'document') await bot.telegram.sendDocument(user.chatId, fileId, { ...opts, caption });
 
-      NotifRepo.add({ userId: user.userId, type: NOTIFICATION_TYPES.BROADCAST, title: 'Xabar', body: caption || text || '' });
+      add({ userId: user.userId, type: NOTIFICATION_TYPES.BROADCAST, title: 'Xabar', body: caption || text || '' });
       sent++;
       await delay(55);
     } catch { failed++; }
@@ -43,4 +43,4 @@ async function broadcast(bot, { text, fileId, fileType, caption }) {
 
 function delay(ms) { return new Promise(r => setTimeout(r, ms)); }
 
-module.exports = { init, send, broadcast, NOTIFICATION_TYPES };
+export default { init, send, broadcast, NOTIFICATION_TYPES };

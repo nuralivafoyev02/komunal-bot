@@ -1,7 +1,7 @@
 'use strict';
-const cron    = require('node-cron');
-const UserRepo = require('../db/repositories/UserRepository');
-const NotifSvc = require('./notificationService');
+const cron = require('node-cron');
+const UserRepo = require('../db/repositories/UserRepository').default;
+const NotifSvc = require('./notificationService').default;
 const { NOTIFICATION_TYPES } = require('../config/constants');
 
 const fmt = n => Number(n || 0).toLocaleString('uz-UZ') + ' so\'m';
@@ -80,7 +80,7 @@ async function checkLongNoPayment(user, home, k) {
   const payments = k.payments || [];
   if (!payments.length) return;
 
-  const lastPay   = new Date(payments[payments.length - 1].date);
+  const lastPay = new Date(payments[payments.length - 1].date);
   const daysSince = Math.floor((Date.now() - lastPay) / 86400000);
 
   if (daysSince >= 45) {

@@ -1,23 +1,23 @@
 'use strict';
-const fs   = require('fs');
-const path = require('path');
+import { existsSync, mkdirSync, writeFileSync, readFileSync } from 'fs';
+import { join } from 'path';
 
-const DB_DIR = path.join(__dirname, 'json');
+const DB_DIR = join(__dirname, 'json');
 
-if (!fs.existsSync(DB_DIR)) {
-  fs.mkdirSync(DB_DIR, { recursive: true });
+if (!existsSync(DB_DIR)) {
+  mkdirSync(DB_DIR, { recursive: true });
 }
 
 function createRepository(collection) {
-  const filePath = path.join(DB_DIR, `${collection}.json`);
+  const filePath = join(DB_DIR, `${collection}.json`);
 
-  if (!fs.existsSync(filePath)) {
-    fs.writeFileSync(filePath, JSON.stringify({}, null, 2));
+  if (!existsSync(filePath)) {
+    writeFileSync(filePath, JSON.stringify({}, null, 2));
   }
 
   function read() {
     try {
-      return JSON.parse(fs.readFileSync(filePath, 'utf8'));
+      return JSON.parse(readFileSync(filePath, 'utf8'));
     } catch (e) {
       console.error(`Error reading ${collection}:`, e);
       return {};
@@ -26,7 +26,7 @@ function createRepository(collection) {
 
   function write(data) {
     try {
-      fs.writeFileSync(filePath, JSON.stringify(data, null, 2));
+      writeFileSync(filePath, JSON.stringify(data, null, 2));
     } catch (e) {
       console.error(`Error writing ${collection}:`, e);
     }
@@ -63,4 +63,4 @@ function createRepository(collection) {
   };
 }
 
-module.exports = { createRepository };
+export default { createRepository };

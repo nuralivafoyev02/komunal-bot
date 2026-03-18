@@ -1,13 +1,13 @@
 'use strict';
-const router     = require('express').Router();
-const PaymentSvc = require('../../services/paymentService');
+const router = require('express').Router();
+import { createPaymentLink, checkPaymentStatus, getProviders } from '../../services/paymentService';
 
 // Create payment link (mock)
 router.post('/create-link', async (req, res) => {
   try {
     const { provider, amount, komunalId, accountId, userId } = req.body;
     if (!provider || !amount) return res.status(400).json({ error: 'provider and amount required' });
-    const result = await PaymentSvc.createPaymentLink(provider, { amount, komunalId, accountId, userId });
+    const result = await createPaymentLink(provider, { amount, komunalId, accountId, userId });
     res.json(result);
   } catch (e) {
     res.status(400).json({ error: e.message });
@@ -18,7 +18,7 @@ router.post('/create-link', async (req, res) => {
 router.get('/status/:provider/:invoiceId', async (req, res) => {
   try {
     const { provider, invoiceId } = req.params;
-    const result = await PaymentSvc.checkPaymentStatus(provider, invoiceId);
+    const result = await checkPaymentStatus(provider, invoiceId);
     res.json(result);
   } catch (e) {
     res.status(400).json({ error: e.message });
@@ -27,7 +27,7 @@ router.get('/status/:provider/:invoiceId', async (req, res) => {
 
 // List providers
 router.get('/providers', (req, res) => {
-  res.json(PaymentSvc.getProviders());
+  res.json(getProviders());
 });
 
-module.exports = router;
+export default router;

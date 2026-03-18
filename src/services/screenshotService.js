@@ -1,5 +1,5 @@
 'use strict';
-const { SCREENSHOT_PATTERNS } = require('../config/constants');
+import { SCREENSHOT_PATTERNS } from '../config/constants';
 
 /**
  * Parse a text string (extracted from receipt/screenshot caption or forwarded message)
@@ -19,7 +19,7 @@ function parseReceiptText(text = '') {
   for (const pattern of SCREENSHOT_PATTERNS.amount) {
     const match = text.match(pattern);
     if (match) {
-      const raw   = match[1].replace(/[\s,]/g, '').replace(/\./g, '');
+      const raw = match[1].replace(/[\s,]/g, '').replace(/\./g, '');
       const amount = parseInt(raw, 10);
       if (!isNaN(amount) && amount > 0) {
         result.amount = amount;
@@ -35,7 +35,7 @@ function parseReceiptText(text = '') {
     if (match) {
       const parsed = tryParseDate(match[1]);
       if (parsed) {
-        result.date       = parsed;
+        result.date = parsed;
         result.confidence += 30;
         break;
       }
@@ -46,7 +46,7 @@ function parseReceiptText(text = '') {
   // ── Service type ─────────────────────────────────────────────────────────
   for (const [id, pattern] of Object.entries(SCREENSHOT_PATTERNS.service)) {
     if (pattern.test(text)) {
-      result.komunalId   = id;
+      result.komunalId = id;
       result.confidence += 30;
       break;
     }
@@ -78,10 +78,10 @@ function tryParseDate(str) {
 function formatParseResult(result, komunalTypes) {
   const lines = ['📄 <b>Chekdan topilgan ma\'lumotlar:</b>\n'];
 
-  if (result.amount)   lines.push(`💰 Summa: <code>${result.amount.toLocaleString('uz-UZ')} so'm</code>`);
-  else                 lines.push('💰 Summa: <i>aniqlanmadi</i>');
+  if (result.amount) lines.push(`💰 Summa: <code>${result.amount.toLocaleString('uz-UZ')} so'm</code>`);
+  else lines.push('💰 Summa: <i>aniqlanmadi</i>');
 
-  if (result.date)     lines.push(`📅 Sana: <code>${new Date(result.date).toLocaleDateString('uz-UZ')}</code>`);
+  if (result.date) lines.push(`📅 Sana: <code>${new Date(result.date).toLocaleDateString('uz-UZ')}</code>`);
   if (result.komunalId) {
     const t = komunalTypes[result.komunalId];
     lines.push(`${t?.emoji || '⚡'} Tur: <b>${t?.name || result.komunalId}</b>`);
@@ -93,4 +93,4 @@ function formatParseResult(result, komunalTypes) {
   return lines.join('\n');
 }
 
-module.exports = { parseReceiptText, formatParseResult };
+export default { parseReceiptText, formatParseResult };

@@ -1,12 +1,12 @@
 'use strict';
-const router      = require('express').Router();
-const UserRepo    = require('../../db/repositories/UserRepository');
-const PaymentRepo = require('../../db/repositories/PaymentRepository');
-const NotifRepo   = require('../../db/repositories/NotificationRepository');
+const router = require('express').Router();
+import { findById, save } from '../../db/repositories/UserRepository';
+import { add, findByUser } from '../../db/repositories/PaymentRepository';
+import { findByUser as _findByUser, markRead } from '../../db/repositories/NotificationRepository';
 
 // Get user
 router.get('/:userId', (req, res) => {
-  const user = UserRepo.findById(req.params.userId);
+  const user = findById(req.params.userId);
   if (!user) return res.status(404).json({ error: 'Not found' });
   res.json(user);
 });
@@ -14,11 +14,11 @@ router.get('/:userId', (req, res) => {
 // Update komunal balance
 router.post('/:userId/komunal/:komunalId/balance', (req, res) => {
   const { userId, komunalId } = req.params;
-  const user = UserRepo.findById(userId);
+  const user = findById(userId);
   if (!user) return res.status(404).json({ error: 'User not found' });
 
   const homeId = req.body.homeId || user.activeHomeId || 'default';
-  const home   = user.homes?.[homeId];
+  const home = user.homes?.[homeId];
   if (!home) return res.status(404).json({ error: 'Home not found' });
 
   const komunal = home.komunallar?.[komunalId];
@@ -28,8 +28,8 @@ router.post('/:userId/komunal/:komunalId/balance', (req, res) => {
   if (typeof balance !== 'number' || balance < 0)
     return res.status(400).json({ error: 'Invalid balance' });
 
-  const oldBal  = komunal.balance;
-  const diff    = balance - oldBal;
+  const oldBal = komunal.balance;
+  const diff = balance - oldBal;
   komunal.balance = balance;
   if (!komunal.payments) komunal.payments = [];
   komunal.payments.push({
@@ -37,8 +37,8 @@ router.post('/:userId/komunal/:komunalId/balance', (req, res) => {
     type: diff >= 0 ? 'topup' : 'charge', description: 'Mini App orqali'
   });
 
-  UserRepo.save(userId, user);
-  PaymentRepo.add({
+  save(userId, user);
+  add({
     userId, homeId, komunalId, komunalName: komunal.name, komunalEmoji: komunal.emoji,
     amount: Math.abs(diff), balanceBefore: oldBal, balanceAfter: balance,
     type: diff >= 0 ? 'topup' : 'charge', source: 'miniapp',
@@ -49,23 +49,23 @@ router.post('/:userId/komunal/:komunalId/balance', (req, res) => {
 
 // Get payment history
 router.get('/:userId/payments', (req, res) => {
-  const user = UserRepo.findById(req.params.userId);
+  const user = findById(req.params.userId);
   if (!user) return res.status(404).json({ error: 'Not found' });
-  res.json(PaymentRepo.findByUser(req.params.userId));
+  res.json(findByUser(req.params.userId));
 });
 
 // Get notifications
 router.get('/:userId/notifications', (req, res) => {
-  const user = UserRepo.findById(req.params.userId);
+  const user = findById(req.params.userId);
   if (!user) return res.status(404).json({ error: 'Not found' });
-  const notifs = NotifRepo.findByUser(req.params.userId, 30);
-  NotifRepo.markRead(req.params.userId);
+  const notifs = _findByUser(req.params.userId, 30);
+  markRead(req.params.userId);
   res.json(notifs);
 });
 
 // Update reminder settings
 router.patch('/:userId/settings', (req, res) => {
-  const user = UserRepo.findById(req.params.userId);
+  const user = findById(req.params.userId);
   if (!user) return res.status(404).json({ error: 'Not found' });
   if (req.body.reminderSettings) {
     user.reminderSettings = { ...user.reminderSettings, ...req.body.reminderSettings };
@@ -73,8 +73,8 @@ router.patch('/:userId/settings', (req, res) => {
   if (typeof req.body.notifications === 'boolean') {
     user.notifications = req.body.notifications;
   }
-  UserRepo.save(req.params.userId, user);
+  save(req.params.userId, user);
   res.json({ success: true });
 });
 
-module.exports = router;
+export default router;

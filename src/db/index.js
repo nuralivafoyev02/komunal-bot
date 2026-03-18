@@ -1,4 +1,4 @@
 'use strict';
-const { createRepository } = require('./baseRepository');
+import { createRepository } from './baseRepository';
 
-module.exports = { createRepository };
+export default { createRepository };

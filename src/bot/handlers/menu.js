@@ -1,36 +1,36 @@
 'use strict';
-const { Markup }     = require('telegraf');
-const UserRepo       = require('../../db/repositories/UserRepository');
-const PaymentRepo    = require('../../db/repositories/PaymentRepository');
-const NotifRepo      = require('../../db/repositories/NotificationRepository');
-const Analytics      = require('../../services/analyticsService');
-const NotifSvc       = require('../../services/notificationService');
-const PaymentSvc     = require('../../services/paymentService');
-const { KOMUNAL_TYPES, SUBSCRIPTION_PLANS, NOTIFICATION_TYPES } = require('../../config/constants');
+import { Markup } from 'telegraf';
+import UserRepo from '../../db/repositories/UserRepository';
+import { totalAmount } from '../../db/repositories/PaymentRepository';
+import { countUnread, findByUser, markRead, typeLabel } from '../../db/repositories/NotificationRepository';
+import Analytics from '../../services/analyticsService';
+import NotifSvc from '../../services/notificationService';
+import PaymentSvc from '../../services/paymentService';
+import { KOMUNAL_TYPES, SUBSCRIPTION_PLANS, NOTIFICATION_TYPES } from '../../config/constants';
 
 const MINI_APP_URL = () => process.env.MINI_APP_URL || 'http://localhost:3000/miniapp';
-const fmt  = n => Number(n || 0).toLocaleString('uz-UZ') + ' so\'m';
+const fmt = n => Number(n || 0).toLocaleString('uz-UZ') + ' so\'m';
 const fmtDate = d => new Date(d).toLocaleDateString('uz-UZ');
 
 // In-memory session state { userId -> { step, ...data } }
 const states = new Map();
 
 function setState(id, s) { states.set(String(id), s); }
-function getState(id)    { return states.get(String(id)) || null; }
-function clearState(id)  { states.delete(String(id)); }
+function getState(id) { return states.get(String(id)) || null; }
+function clearState(id) { states.delete(String(id)); }
 
 // ── Keyboards ─────────────────────────────────────────────────────────────────
 
 function mainMenu(userId) {
-  const isAdm  = UserRepo.isAdmin(userId);
-  const unread = NotifRepo.countUnread(userId);
+  const isAdm = UserRepo.isAdmin(userId);
+  const unread = countUnread(userId);
   const notifLabel = unread > 0 ? `🔔 Bildirishnomalar (${unread})` : '🔔 Bildirishnomalar';
   const rows = [
-    [Markup.button.text('💰 Balanslar'),        Markup.button.text('📊 Statistika')],
+    [Markup.button.text('💰 Balanslar'), Markup.button.text('📊 Statistika')],
     [Markup.button.text('➕ Komunal qo\'shish'), Markup.button.text(notifLabel)],
-    [Markup.button.text('💳 To\'lov qilish'),    Markup.button.text('⚙️ Sozlamalar')],
+    [Markup.button.text('💳 To\'lov qilish'), Markup.button.text('⚙️ Sozlamalar')],
     [Markup.button.webApp('📱 Mini App', MINI_APP_URL() + '?userId=' + userId)],
-    [Markup.button.text('ℹ️ Yordam'),            Markup.button.text('🤖 AI Yordam')],
+    [Markup.button.text('ℹ️ Yordam'), Markup.button.text('🤖 AI Yordam')],
   ];
   if (isAdm) rows.push([Markup.button.text('👑 Admin Panel')]);
   return Markup.keyboard(rows).resize();
@@ -66,8 +66,8 @@ async function showBalances(ctx) {
     msg += '\n';
     buttons.push([
       Markup.button.callback(`${k.emoji} Yangilash`, `bal_update_${k.id}`),
-      Markup.button.callback('📋 Tarix',             `bal_history_${k.id}`),
-      Markup.button.callback('🗑️',                   `bal_delete_${k.id}`),
+      Markup.button.callback('📋 Tarix', `bal_history_${k.id}`),
+      Markup.button.callback('🗑️', `bal_delete_${k.id}`),
     ]);
   }
 
@@ -78,29 +78,29 @@ async function showBalances(ctx) {
 
 async function showStats(ctx) {
   const userId = ctx.from.id;
-  const home   = UserRepo.getActiveHome(userId);
+  const home = UserRepo.getActiveHome(userId);
   if (!home) return ctx.reply('Uy topilmadi.');
 
   const komunallar = Object.values(home.komunallar || {});
-  const compare    = Analytics.compareMonths(userId);
-  const insight    = Analytics.generateInsight(userId);
+  const compare = Analytics.compareMonths(userId);
+  const insight = Analytics.generateInsight(userId);
 
   let total = 0;
-  let msg   = `📊 <b>Statistika — ${home.name}</b>\n\n`;
+  let msg = `📊 <b>Statistika — ${home.name}</b>\n\n`;
 
   for (const k of komunallar) {
     total += Number(k.balance || 0);
-    msg   += `${k.emoji} ${k.name}: <code>${fmt(k.balance)}</code>\n`;
+    msg += `${k.emoji} ${k.name}: <code>${fmt(k.balance)}</code>\n`;
   }
 
   msg += `\n<b>Jami balans:</b> <code>${fmt(total)}</code>\n`;
-  msg += `<b>Jami to\'lovlar:</b> <code>${fmt(PaymentRepo.totalAmount(userId))}</code>\n\n`;
+  msg += `<b>Jami to\'lovlar:</b> <code>${fmt(totalAmount(userId))}</code>\n\n`;
 
   if (compare.length) {
     msg += `<b>Bu oy vs o'tgan oy:</b>\n`;
     for (const c of compare) {
       const arrow = c.trend === 'up' ? '📈' : c.trend === 'down' ? '📉' : '➡️';
-      const sign  = c.pct > 0 ? '+' : '';
+      const sign = c.pct > 0 ? '+' : '';
       msg += `${arrow} ${c.emoji} ${c.name}: ${sign}${c.pct}% (${fmt(c.thisMonth)})\n`;
     }
     msg += '\n';
@@ -113,9 +113,9 @@ async function showStats(ctx) {
 // ── Add Komunal flow ──────────────────────────────────────────────────────────
 
 async function startAddKomunal(ctx) {
-  const home     = UserRepo.getActiveHome(ctx.from.id);
+  const home = UserRepo.getActiveHome(ctx.from.id);
   const existing = Object.keys(home?.komunallar || {});
-  const buttons  = Object.entries(KOMUNAL_TYPES)
+  const buttons = Object.entries(KOMUNAL_TYPES)
     .filter(([id]) => !existing.includes(id))
     .map(([id, t]) => [Markup.button.callback(`${t.emoji} ${t.name}`, `add_k_${id}`)]);
 
@@ -128,16 +128,16 @@ async function startAddKomunal(ctx) {
 
 async function showNotifications(ctx) {
   const userId = ctx.from.id;
-  const notifs = NotifRepo.findByUser(userId, 15);
-  NotifRepo.markRead(userId);
+  const notifs = findByUser(userId, 15);
+  markRead(userId);
 
   if (!notifs.length) return ctx.reply('📭 Hali bildirishnomalar yo\'q.');
 
   let msg = '🔔 <b>Bildirishnomalar</b>\n\n';
   for (const n of notifs) {
-    const date  = fmtDate(n.createdAt);
-    const label = NotifRepo.typeLabel(n.type);
-    const read  = n.status === 'read' ? '' : ' 🆕';
+    const date = fmtDate(n.createdAt);
+    const label = typeLabel(n.type);
+    const read = n.status === 'read' ? '' : ' 🆕';
     msg += `<b>${label}${read}</b> — ${date}\n${n.body}\n\n`;
   }
 
@@ -148,13 +148,13 @@ async function showNotifications(ctx) {
 
 async function showReminderSettings(ctx) {
   const user = UserRepo.findById(ctx.from.id);
-  const s    = user.reminderSettings;
-  const msg  = `⚙️ <b>Eslatma sozlamalari</b>\n\n` +
-               `🔔 Bildirishnomalar: ${user.notifications ? '✅ Yoqilgan' : '❌ O\'chirilgan'}\n` +
-               `💰 Kam balans: ${s.lowBalanceAlert ? '✅' : '❌'}\n` +
-               `📅 To\'lov muddati: ${s.paymentDueAlert ? '✅' : '❌'}\n` +
-               `⏰ Kun oldin ogohlantirish: ${s.daysBeforeDue} kun\n` +
-               `🕐 Kunlik tekshirish: ${s.dailyCheckTime}`;
+  const s = user.reminderSettings;
+  const msg = `⚙️ <b>Eslatma sozlamalari</b>\n\n` +
+    `🔔 Bildirishnomalar: ${user.notifications ? '✅ Yoqilgan' : '❌ O\'chirilgan'}\n` +
+    `💰 Kam balans: ${s.lowBalanceAlert ? '✅' : '❌'}\n` +
+    `📅 To\'lov muddati: ${s.paymentDueAlert ? '✅' : '❌'}\n` +
+    `⏰ Kun oldin ogohlantirish: ${s.daysBeforeDue} kun\n` +
+    `🕐 Kunlik tekshirish: ${s.dailyCheckTime}`;
 
   await ctx.reply(msg, {
     parse_mode: 'HTML',
@@ -169,7 +169,7 @@ async function showReminderSettings(ctx) {
 // ── Payment flow ──────────────────────────────────────────────────────────────
 
 async function startPayment(ctx) {
-  const home     = UserRepo.getActiveHome(ctx.from.id);
+  const home = UserRepo.getActiveHome(ctx.from.id);
   const komunallar = Object.values(home?.komunallar || {});
   if (!komunallar.length) return ctx.reply('Avval kommunal qo\'shing.');
 
@@ -197,7 +197,7 @@ async function showHelp(ctx) {
 }
 
 // ── Export ────────────────────────────────────────────────────────────────────
-module.exports = {
+export default {
   states, setState, getState, clearState,
   mainMenu, showBalances, showStats, startAddKomunal,
   showNotifications, showReminderSettings, startPayment, showHelp,

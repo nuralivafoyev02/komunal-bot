@@ -1,25 +1,21 @@
 'use strict';
 require('dotenv').config();
-const { Telegraf, Markup } = require('telegraf');
+import { Telegraf, Markup } from 'telegraf';
 
-const UserRepo      = require('../db/repositories/UserRepository');
-const PaymentRepo   = require('../db/repositories/PaymentRepository');
-const NotifRepo     = require('../db/repositories/NotificationRepository');
-const NotifSvc      = require('../services/notificationService');
-const ReminderSvc   = require('../services/reminderService');
-const AiSvc         = require('../services/aiService');
-const PaymentSvc    = require('../services/paymentService');
-const AdminCmd      = require('./commands/admin');
-const ScreenshotHdl = require('./handlers/screenshot');
-const {
-  states, setState, getState, clearState,
-  mainMenu, showBalances, showStats, startAddKomunal,
-  showNotifications, showReminderSettings, startPayment, showHelp,
-} = require('./handlers/menu');
-const { KOMUNAL_TYPES, SUBSCRIPTION_PLANS, NOTIFICATION_TYPES } = require('../config/constants');
+import UserRepo from '../db/repositories/UserRepository';
+import { add } from '../db/repositories/PaymentRepository';
+import NotifRepo from '../db/repositories/NotificationRepository';
+import NotifSvc from '../services/notificationService';
+import ReminderSvc from '../services/reminderService';
+import AiSvc from '../services/aiService';
+import PaymentSvc from '../services/paymentService';
+import { register } from './commands/admin';
+import { handleScreenshot, saveScreenshotPayment } from './handlers/screenshot';
+import { states, setState, getState, clearState, mainMenu, showBalances, showStats, startAddKomunal, showNotifications, showReminderSettings, startPayment, showHelp } from './handlers/menu';
+import { KOMUNAL_TYPES, SUBSCRIPTION_PLANS, NOTIFICATION_TYPES } from '../config/constants';
 
 const bot = new Telegraf(process.env.BOT_TOKEN);
-const fmt  = n => Number(n || 0).toLocaleString('uz-UZ') + ' so\'m';
+const fmt = n => Number(n || 0).toLocaleString('uz-UZ') + ' so\'m';
 const fmtDate = d => new Date(d).toLocaleDateString('uz-UZ');
 
 // ── Init services ─────────────────────────────────────────────────────────────
@@ -27,7 +23,7 @@ NotifSvc.init(bot);
 ReminderSvc.start();
 
 // ── Admin commands ────────────────────────────────────────────────────────────
-AdminCmd.register(bot);
+register(bot);
 
 // ── /start ────────────────────────────────────────────────────────────────────
 bot.start(async ctx => {
@@ -76,9 +72,9 @@ bot.command('cancel', ctx => {
 
 // ── Shortcut commands ─────────────────────────────────────────────────────────
 bot.command('notifications', ctx => showNotifications(ctx));
-bot.command('reminder',      ctx => showReminderSettings(ctx));
-bot.command('stats',         ctx => showStats(ctx));
-bot.command('ai',            async ctx => {
+bot.command('reminder', ctx => showReminderSettings(ctx));
+bot.command('stats', ctx => showStats(ctx));
+bot.command('ai', async ctx => {
   setState(ctx.from.id, { step: 'ai_awaiting_question' });
   await ctx.reply('🤖 <b>AI Yordamchi</b>\n\nSavolingizni yozing:\nMasalan: "Nega gazim tez tugayapti?"', { parse_mode: 'HTML' });
 });
@@ -88,7 +84,7 @@ bot.on('photo', async ctx => {
   const state = getState(ctx.from.id);
   if (state?.step === 'admin_awaiting_broadcast') return handleAdminMedia(ctx, 'photo');
   if (!UserRepo.findById(ctx.from.id)) return;
-  await ScreenshotHdl.handleScreenshot(ctx);
+  await handleScreenshot(ctx);
 });
 
 bot.on(['video', 'animation', 'document'], async ctx => {
@@ -101,9 +97,9 @@ bot.on(['video', 'animation', 'document'], async ctx => {
 
 // ── Text messages ─────────────────────────────────────────────────────────────
 bot.on('text', async ctx => {
-  const text   = ctx.message.text;
+  const text = ctx.message.text;
   const userId = ctx.from.id;
-  const state  = getState(userId);
+  const state = getState(userId);
 
   if (state) return handleState(ctx, state, text);
 
@@ -111,17 +107,17 @@ bot.on('text', async ctx => {
   if (!user) return ctx.reply('Boshlash uchun /start bosing.');
 
   switch (text) {
-    case '💰 Balanslar':        return showBalances(ctx);
-    case '📊 Statistika':       return showStats(ctx);
+    case '💰 Balanslar': return showBalances(ctx);
+    case '📊 Statistika': return showStats(ctx);
     case '➕ Komunal qo\'shish': return startAddKomunal(ctx);
-    case '💳 To\'lov qilish':   return startPayment(ctx);
-    case '⚙️ Sozlamalar':       return showReminderSettings(ctx);
-    case '🤖 AI Yordam':        {
+    case '💳 To\'lov qilish': return startPayment(ctx);
+    case '⚙️ Sozlamalar': return showReminderSettings(ctx);
+    case '🤖 AI Yordam': {
       setState(userId, { step: 'ai_awaiting_question' });
       return ctx.reply('🤖 <b>AI Yordamchi</b>\n\nSavolingizni yozing:', { parse_mode: 'HTML' });
     }
-    case 'ℹ️ Yordam':           return showHelp(ctx);
-    case '👑 Admin Panel':      return UserRepo.isAdmin(userId) ? ctx.reply('Admin buyruqlari:\n/admin /users /stats /message /alert') : null;
+    case 'ℹ️ Yordam': return showHelp(ctx);
+    case '👑 Admin Panel': return UserRepo.isAdmin(userId) ? ctx.reply('Admin buyruqlari:\n/admin /users /stats /message /alert') : null;
     default: {
       const notifLabel = text.match(/🔔 Bildirishnomalar/);
       if (notifLabel) return showNotifications(ctx);
@@ -132,7 +128,7 @@ bot.on('text', async ctx => {
 // ── State machine ──────────────────────────────────────────────────────────────
 async function handleState(ctx, state, text) {
   const userId = ctx.from.id;
-  const user   = UserRepo.findById(userId);
+  const user = UserRepo.findById(userId);
 
   // ── Komunal add flow ─────────────────────────────────────────────────────
   if (state.step === 'add_account') {
@@ -158,7 +154,7 @@ async function handleState(ctx, state, text) {
       if (m) dueDate = new Date(`${m[3]}-${m[2]}-${m[1]}`).toISOString();
     }
     const home = UserRepo.getActiveHome(userId);
-    const kt   = KOMUNAL_TYPES[state.komunalType];
+    const kt = KOMUNAL_TYPES[state.komunalType];
     if (!user.homes[user.activeHomeId].komunallar) user.homes[user.activeHomeId].komunallar = {};
     user.homes[user.activeHomeId].komunallar[state.komunalType] = {
       id: state.komunalType, name: kt.name, emoji: kt.emoji,
@@ -180,15 +176,15 @@ async function handleState(ctx, state, text) {
   if (state.step === 'update_balance') {
     const newBal = parseAmount(text);
     if (isNaN(newBal)) return ctx.reply('❌ Faqat raqam kiriting.');
-    const home   = UserRepo.getActiveHome(userId);
-    const k      = home.komunallar[state.komunalId];
+    const home = UserRepo.getActiveHome(userId);
+    const k = home.komunallar[state.komunalId];
     if (!k) return ctx.reply('Kommunal topilmadi.');
     const oldBal = k.balance;
-    k.balance    = newBal;
+    k.balance = newBal;
     if (!k.payments) k.payments = [];
     k.payments.push({ amount: Math.abs(newBal - oldBal), balance: newBal, date: new Date().toISOString(), type: newBal > oldBal ? 'topup' : 'charge', description: 'Bot orqali' });
     UserRepo.save(userId, user);
-    PaymentRepo.add({ userId, homeId: home.id, komunalId: k.id, komunalName: k.name, komunalEmoji: k.emoji, amount: Math.abs(newBal - oldBal), balanceBefore: oldBal, balanceAfter: newBal, type: newBal > oldBal ? 'topup' : 'charge', source: 'bot' });
+    add({ userId, homeId: home.id, komunalId: k.id, komunalName: k.name, komunalEmoji: k.emoji, amount: Math.abs(newBal - oldBal), balanceBefore: oldBal, balanceAfter: newBal, type: newBal > oldBal ? 'topup' : 'charge', source: 'bot' });
     clearState(userId);
     const isLow = newBal <= k.minAlert;
     await ctx.reply(
@@ -200,11 +196,11 @@ async function handleState(ctx, state, text) {
 
   // ── Reminder due date update ──────────────────────────────────────────────
   if (state.step === 'set_due_date') {
-    const m    = text.match(/(\d{2})[./](\d{2})[./](\d{4})/);
+    const m = text.match(/(\d{2})[./](\d{2})[./](\d{4})/);
     if (!m) return ctx.reply('❌ Format: DD.MM.YYYY — masalan: 25.01.2026');
     const date = new Date(`${m[3]}-${m[2]}-${m[1]}`).toISOString();
     const home = UserRepo.getActiveHome(userId);
-    const k    = home.komunallar[state.komunalId];
+    const k = home.komunallar[state.komunalId];
     if (k) { k.nextPaymentDate = date; UserRepo.save(userId, user); }
     clearState(userId);
     return ctx.reply(`✅ To\'lov muddati: <code>${fmtDate(date)}</code>`, { parse_mode: 'HTML', ...mainMenu(userId) });
@@ -215,7 +211,7 @@ async function handleState(ctx, state, text) {
     clearState(userId);
     const thinking = await ctx.reply('🤖 <i>Tahlil qilinmoqda...</i>', { parse_mode: 'HTML' });
     const answer = await AiSvc.ask(userId, text);
-    await ctx.telegram.deleteMessage(ctx.chat.id, thinking.message_id).catch(() => {});
+    await ctx.telegram.deleteMessage(ctx.chat.id, thinking.message_id).catch(() => { });
     return ctx.reply(`🤖 <b>AI Yordamchi:</b>\n\n${answer}`, { parse_mode: 'HTML' });
   }
 
@@ -241,9 +237,9 @@ async function handleState(ctx, state, text) {
 
 // ── Callback queries ──────────────────────────────────────────────────────────
 bot.on('callback_query', async ctx => {
-  const data   = ctx.callbackQuery.data;
+  const data = ctx.callbackQuery.data;
   const userId = ctx.from.id;
-  await ctx.answerCbQuery().catch(() => {});
+  await ctx.answerCbQuery().catch(() => { });
 
   if (data === 'cancel') { clearState(userId); return ctx.editMessageText('❌ Bekor qilindi.'); }
 
@@ -261,14 +257,14 @@ bot.on('callback_query', async ctx => {
   if (data.startsWith('bal_update_')) {
     const id = data.slice(11);
     setState(userId, { step: 'update_balance', komunalId: id });
-    const k  = UserRepo.getActiveHome(userId)?.komunallar[id];
+    const k = UserRepo.getActiveHome(userId)?.komunallar[id];
     return ctx.editMessageText(`${k?.emoji} <b>${k?.name}</b>\nHozirgi: <code>${fmt(k?.balance)}</code>\n\nYangi balansni kiriting:`, { parse_mode: 'HTML' });
   }
 
   // History
   if (data.startsWith('bal_history_')) {
-    const id  = data.slice(12);
-    const k   = UserRepo.getActiveHome(userId)?.komunallar[id];
+    const id = data.slice(12);
+    const k = UserRepo.getActiveHome(userId)?.komunallar[id];
     const pays = [...(k?.payments || [])].reverse().slice(0, 10);
     let msg = `${k?.emoji} <b>${k?.name} — Tarix</b>\n\n`;
     if (!pays.length) msg += 'Hali to\'lovlar yo\'q.';
@@ -279,7 +275,7 @@ bot.on('callback_query', async ctx => {
   // Delete komunal
   if (data.startsWith('bal_delete_')) {
     const id = data.slice(11);
-    const k  = UserRepo.getActiveHome(userId)?.komunallar[id];
+    const k = UserRepo.getActiveHome(userId)?.komunallar[id];
     setState(userId, { step: 'confirm_delete', komunalId: id });
     return ctx.editMessageText(`${k?.emoji} <b>${k?.name}</b>ni o\'chirishni tasdiqlaysizmi?`, { parse_mode: 'HTML', ...Markup.inlineKeyboard([[Markup.button.callback('✅ Ha', 'confirm_delete'), Markup.button.callback('❌ Yo\'q', 'cancel')]]) });
   }
@@ -296,10 +292,10 @@ bot.on('callback_query', async ctx => {
 
   // Payment provider selection
   if (data.startsWith('pay_k_')) {
-    const id  = data.slice(6);
-    const k   = UserRepo.getActiveHome(userId)?.komunallar[id];
+    const id = data.slice(6);
+    const k = UserRepo.getActiveHome(userId)?.komunallar[id];
     const providers = PaymentSvc.getProviders();
-    const buttons   = providers.map(p => [Markup.button.callback(`${p.emoji} ${p.name}`, `pay_prov_${p.id}_${id}`)]);
+    const buttons = providers.map(p => [Markup.button.callback(`${p.emoji} ${p.name}`, `pay_prov_${p.id}_${id}`)]);
     buttons.push([Markup.button.callback('❌ Bekor', 'cancel')]);
     return ctx.editMessageText(`${k?.emoji} <b>${k?.name}</b> uchun to\'lov tizimini tanlang:`, { parse_mode: 'HTML', ...Markup.inlineKeyboard(buttons) });
   }
@@ -312,16 +308,16 @@ bot.on('callback_query', async ctx => {
 
   // Screenshot komunal selection
   if (data.startsWith('screenshot_komunal_')) {
-    const id    = data.slice(19);
+    const id = data.slice(19);
     const state = getState(userId);
-    await ScreenshotHdl.saveScreenshotPayment(ctx, id, state?.parsed || {});
+    await saveScreenshotPayment(ctx, id, state?.parsed || {});
     clearState(userId);
     return;
   }
   if (data === 'screenshot_confirm_save') {
     const state = getState(userId);
     if (state?.parsed?.komunalId) {
-      await ScreenshotHdl.saveScreenshotPayment(ctx, state.parsed.komunalId, state.parsed);
+      await saveScreenshotPayment(ctx, state.parsed.komunalId, state.parsed);
       clearState(userId);
     }
     return;
@@ -365,14 +361,14 @@ bot.on('callback_query', async ctx => {
 
 // ── Admin media handler ───────────────────────────────────────────────────────
 async function handleAdminMedia(ctx, fileType) {
-  const userId  = ctx.from.id;
+  const userId = ctx.from.id;
   let fileId;
-  if      (fileType === 'photo')     fileId = ctx.message.photo.at(-1).file_id;
-  else if (fileType === 'video')     fileId = ctx.message.video.file_id;
+  if (fileType === 'photo') fileId = ctx.message.photo.at(-1).file_id;
+  else if (fileType === 'video') fileId = ctx.message.video.file_id;
   else if (fileType === 'animation') fileId = ctx.message.animation.file_id;
-  else if (fileType === 'document')  fileId = ctx.message.document.file_id;
-  const caption  = ctx.message.caption || '';
-  const count    = UserRepo.count();
+  else if (fileType === 'document') fileId = ctx.message.document.file_id;
+  const caption = ctx.message.caption || '';
+  const count = UserRepo.count();
   setState(userId, { step: 'admin_confirm_broadcast', fileId, fileType, caption, text: null });
   await ctx.reply(
     `📢 <b>Media xabar</b>\n\nTur: ${fileType}\n${caption ? `Izoh: ${caption}\n` : ''}👥 ${count} ta foydalanuvchiga yuboriladi.`,
@@ -381,8 +377,8 @@ async function handleAdminMedia(ctx, fileType) {
 }
 
 function parseAmount(s) { return parseFloat(String(s).replace(/\s/g, '').replace(/,/g, '.')); }
-function fmtDate(d)     { return new Date(d).toLocaleDateString('uz-UZ'); }
+function fmtDate(d) { return new Date(d).toLocaleDateString('uz-UZ'); }
 
 // ── Launch ────────────────────────────────────────────────────────────────────
 // ── Export for Serverless / Webhook ──────────────────────────────────────────
-module.exports = { bot };
+export default { bot };

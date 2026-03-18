@@ -1,11 +1,11 @@
 'use strict';
-const { Markup }   = require('telegraf');
-const UserRepo     = require('../../db/repositories/UserRepository');
-const PaymentRepo  = require('../../db/repositories/PaymentRepository');
-const NotifRepo    = require('../../db/repositories/NotificationRepository');
-const NotifSvc     = require('../../services/notificationService');
-const ReminderSvc  = require('../../services/reminderService');
-const { setState } = require('../handlers/menu');
+const { Markup } = require('telegraf');
+const UserRepo = require('../../db/repositories/UserRepository').default;
+const PaymentRepo = require('../../db/repositories/PaymentRepository');
+const NotifRepo = require('../../db/repositories/NotificationRepository');
+const NotifSvc = require('../../services/notificationService').default;
+const ReminderSvc = require('../../services/reminderService').default;
+const { setState } = require('../handlers/menu').default;
 
 const fmt = n => Number(n || 0).toLocaleString('uz-UZ') + ' so\'m';
 
@@ -18,12 +18,12 @@ function register(bot) {
 
   // ── /users ──────────────────────────────────────────────────────────────────
   bot.command('users', requireAdmin, async ctx => {
-    const args   = ctx.message.text.split(' ');
+    const args = ctx.message.text.split(' ');
     const filter = args[1]; // active | debt | premium | free
-    let   users  = UserRepo.findAll();
+    let users = UserRepo.findAll();
 
     if (filter === 'premium') users = users.filter(u => u.subscription === 'premium');
-    if (filter === 'free')    users = users.filter(u => u.subscription !== 'premium');
+    if (filter === 'free') users = users.filter(u => u.subscription !== 'premium');
 
     let msg = `👥 <b>Foydalanuvchilar (${users.length})</b>${filter ? ` — filtr: ${filter}` : ''}\n\n`;
     for (const u of users.slice(0, 30)) {
@@ -38,11 +38,11 @@ function register(bot) {
 
   // ── /stats ──────────────────────────────────────────────────────────────────
   bot.command('stats', requireAdmin, async ctx => {
-    const users    = UserRepo.findAll();
+    const users = UserRepo.findAll();
     const payments = PaymentRepo.findAll();
-    const total    = payments.reduce((s, p) => s + (p.type === 'topup' ? p.amount : 0), 0);
-    const prem     = users.filter(u => u.subscription === 'premium').length;
-    const notifs   = NotifRepo.countAll();
+    const total = payments.reduce((s, p) => s + (p.type === 'topup' ? p.amount : 0), 0);
+    const prem = users.filter(u => u.subscription === 'premium').length;
+    const notifs = NotifRepo.countAll();
 
     await ctx.reply(
       `📊 <b>Bot statistikasi</b>\n\n` +
@@ -95,9 +95,9 @@ function register(bot) {
 }
 
 async function showAdminDashboard(ctx) {
-  const users    = UserRepo.findAll();
+  const users = UserRepo.findAll();
   const payments = PaymentRepo.findAll();
-  const total    = payments.reduce((s, p) => s + (p.type === 'topup' ? p.amount : 0), 0);
+  const total = payments.reduce((s, p) => s + (p.type === 'topup' ? p.amount : 0), 0);
 
   await ctx.reply(
     `👑 <b>Admin Panel</b>\n\n` +

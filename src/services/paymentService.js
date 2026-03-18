@@ -111,4 +111,4 @@ function getProviders() {
 
 function delay(ms) { return new Promise(r => setTimeout(r, ms)); }
 
-module.exports = { createPaymentLink, checkPaymentStatus, getProviders };
+export default { createPaymentLink, checkPaymentStatus, getProviders };

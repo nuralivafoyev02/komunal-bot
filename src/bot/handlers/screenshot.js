@@ -1,11 +1,11 @@
 'use strict';
-const { Markup }    = require('telegraf');
-const ScreenshotSvc = require('../../services/screenshotService');
-const PaymentRepo   = require('../../db/repositories/PaymentRepository');
-const UserRepo      = require('../../db/repositories/UserRepository');
-const NotifSvc      = require('../../services/notificationService');
-const { KOMUNAL_TYPES, NOTIFICATION_TYPES } = require('../../config/constants');
-const { setState }  = require('./menu');
+import { Markup } from 'telegraf';
+import ScreenshotSvc from '../../services/screenshotService';
+import { add } from '../../db/repositories/PaymentRepository';
+import UserRepo from '../../db/repositories/UserRepository';
+import NotifSvc from '../../services/notificationService';
+import { KOMUNAL_TYPES, NOTIFICATION_TYPES } from '../../config/constants';
+import { setState } from './menu';
 
 const fmt = n => Number(n || 0).toLocaleString('uz-UZ') + ' so\'m';
 
@@ -17,18 +17,18 @@ const fmt = n => Number(n || 0).toLocaleString('uz-UZ') + ' so\'m';
  */
 async function handleScreenshot(ctx) {
   const caption = ctx.message.caption || ctx.message.forward_from?.text || '';
-  const userId  = ctx.from.id;
+  const userId = ctx.from.id;
 
   // In production: send photo to OCR service (Google Vision, Tesseract, etc.)
   // For now: parse whatever text we have (caption or forwarded message text)
-  const result  = ScreenshotSvc.parseReceiptText(caption);
+  const result = ScreenshotSvc.parseReceiptText(caption);
   const summary = ScreenshotSvc.formatParseResult(result, KOMUNAL_TYPES);
 
   if (result.confidence < 40) {
     // Could not parse enough — ask user to confirm manually
     setState(userId, {
-      step:    'screenshot_manual',
-      parsed:  result,
+      step: 'screenshot_manual',
+      parsed: result,
       caption,
     });
     return ctx.reply(
@@ -42,8 +42,8 @@ async function handleScreenshot(ctx) {
 
   // Good parse — show confirmation
   setState(userId, {
-    step:    'screenshot_confirm',
-    parsed:  result,
+    step: 'screenshot_confirm',
+    parsed: result,
     caption,
   });
 
@@ -72,8 +72,8 @@ async function handleScreenshot(ctx) {
  */
 async function saveScreenshotPayment(ctx, komunalId, parsed) {
   const userId = ctx.from.id;
-  const user   = UserRepo.findById(userId);
-  const home   = UserRepo.getActiveHome(userId);
+  const user = UserRepo.findById(userId);
+  const home = UserRepo.getActiveHome(userId);
   if (!home) return ctx.reply('Uy topilmadi.');
 
   const komunal = home.komunallar[komunalId];
@@ -83,9 +83,9 @@ async function saveScreenshotPayment(ctx, komunalId, parsed) {
     );
   }
 
-  const amount   = parsed.amount || 0;
-  const oldBal   = Number(komunal.balance);
-  const newBal   = oldBal + amount;
+  const amount = parsed.amount || 0;
+  const oldBal = Number(komunal.balance);
+  const newBal = oldBal + amount;
   komunal.balance = newBal;
   if (!komunal.payments) komunal.payments = [];
   komunal.payments.push({
@@ -94,7 +94,7 @@ async function saveScreenshotPayment(ctx, komunalId, parsed) {
   });
   UserRepo.save(userId, user);
 
-  PaymentRepo.add({
+  add({
     userId, homeId: home.id, komunalId,
     komunalName: komunal.name, komunalEmoji: komunal.emoji,
     amount, balanceBefore: oldBal, balanceAfter: newBal,
@@ -108,4 +108,4 @@ async function saveScreenshotPayment(ctx, komunalId, parsed) {
   await ctx.editMessageText(`✅ <b>Saqlandi!</b>\n\n${komunal.emoji} ${komunal.name}: +${fmt(amount)}\nBalans: <code>${fmt(newBal)}</code>`, { parse_mode: 'HTML' });
 }
 
-module.exports = { handleScreenshot, saveScreenshotPayment };
+export default { handleScreenshot, saveScreenshotPayment };
