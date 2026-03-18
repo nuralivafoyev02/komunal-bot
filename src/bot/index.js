@@ -384,11 +384,5 @@ function parseAmount(s) { return parseFloat(String(s).replace(/\s/g, '').replace
 function fmtDate(d)     { return new Date(d).toLocaleDateString('uz-UZ'); }
 
 // ── Launch ────────────────────────────────────────────────────────────────────
-if (require.main === module) {
-  bot.launch();
-  console.log('🤖 Komunal Bot v2 ishga tushdi!');
-  process.once('SIGINT',  () => bot.stop('SIGINT'));
-  process.once('SIGTERM', () => bot.stop('SIGTERM'));
-}
-
+// ── Export for Serverless / Webhook ──────────────────────────────────────────
 module.exports = { bot };
