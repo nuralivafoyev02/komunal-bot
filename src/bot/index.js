@@ -319,7 +319,7 @@ bot.on('callback_query', async ctx => {
   // Premium plan selection
   if (data.startsWith('sub_plan_')) {
     const planId = data.slice(9);
-    const { PREMIUM_PLANS, CARD_DETAILS } = await import('../../config/constants.js');
+    const { PREMIUM_PLANS, CARD_DETAILS } = await import('../config/constants.js');
     const plan = PREMIUM_PLANS.find(p => p.id === planId);
     setState(userId, { step: 'sub_awaiting_receipt', planId });
     return ctx.editMessageText(
@@ -343,7 +343,7 @@ bot.on('callback_query', async ctx => {
     const planId = parts[3];
 
     if (action === 'approve') {
-      const { PREMIUM_PLANS } = await import('../../config/constants.js');
+      const { PREMIUM_PLANS } = await import('../config/constants.js');
       const plan = PREMIUM_PLANS.find(p => p.id === planId);
       const targetUser = await UserRepo.findById(targetUserId);
       if (targetUser) {
