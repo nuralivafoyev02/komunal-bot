@@ -1,3 +1,3 @@
 'use strict';
 // Bu fayl src/bot/index.js ga yo'naltiruvchi hisoblanadi.
-import './src/bot/index';
+import './src/bot/index.js';

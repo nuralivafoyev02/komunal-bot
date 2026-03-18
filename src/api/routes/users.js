@@ -1,8 +1,8 @@
 'use strict';
 const router = require('express').Router();
-import { findById, save } from '../../db/repositories/UserRepository';
-import { add, findByUser } from '../../db/repositories/PaymentRepository';
-import { findByUser as _findByUser, markRead } from '../../db/repositories/NotificationRepository';
+import { findById, save } from '../../db/repositories/UserRepository.js';
+import { add, findByUser } from '../../db/repositories/PaymentRepository.js';
+import { findByUser as _findByUser, markRead } from '../../db/repositories/NotificationRepository.js';
 
 // Get user
 router.get('/:userId', (req, res) => {

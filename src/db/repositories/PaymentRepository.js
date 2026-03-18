@@ -1,6 +1,6 @@
 'use strict';
-const { createRepository } = require('../index').default;
-const { v4: uuid } = require('uuid');
+import { createRepository } from '../index.js';
+import { v4 as uuid } from 'uuid';
 
 const repo = createRepository('payments');
 
@@ -52,4 +52,4 @@ function totalAmount(userId) {
   return findByUser(userId).reduce((s, p) => s + (p.type === 'topup' ? p.amount : 0), 0);
 }
 
-module.exports = { add, findByUser, findByUserAndKomunal, findByUserAndMonth, findAll, countAll, totalAmount };
+export { add, findByUser, findByUserAndKomunal, findByUserAndMonth, findAll, countAll, totalAmount };

@@ -2,17 +2,17 @@
 require('dotenv').config();
 import { Telegraf, Markup } from 'telegraf';
 
-import UserRepo from '../db/repositories/UserRepository';
-import { add } from '../db/repositories/PaymentRepository';
-import NotifRepo from '../db/repositories/NotificationRepository';
-import NotifSvc from '../services/notificationService';
-import ReminderSvc from '../services/reminderService';
-import AiSvc from '../services/aiService';
-import PaymentSvc from '../services/paymentService';
+import * as UserRepo from '../db/repositories/UserRepository.js';
+import { add } from '../db/repositories/PaymentRepository.js';
+import * as NotifRepo from '../db/repositories/NotificationRepository.js';
+import NotifSvc from './services/notificationService.js';
+import { start as startReminderSvc } from '../services/reminderService.js';
+import AiSvc from '../services/aiService.js';
+import PaymentSvc from '../services/paymentService.js';
 import { register } from './commands/admin';
 import { handleScreenshot, saveScreenshotPayment } from './handlers/screenshot';
 import { states, setState, getState, clearState, mainMenu, showBalances, showStats, startAddKomunal, showNotifications, showReminderSettings, startPayment, showHelp } from './handlers/menu';
-import { KOMUNAL_TYPES, SUBSCRIPTION_PLANS, NOTIFICATION_TYPES } from '../config/constants';
+import { KOMUNAL_TYPES, SUBSCRIPTION_PLANS, NOTIFICATION_TYPES } from '../config/constants.js';
 
 const bot = new Telegraf(process.env.BOT_TOKEN);
 const fmt = n => Number(n || 0).toLocaleString('uz-UZ') + ' so\'m';
@@ -20,7 +20,7 @@ const fmtDate = d => new Date(d).toLocaleDateString('uz-UZ');
 
 // ── Init services ─────────────────────────────────────────────────────────────
 NotifSvc.init(bot);
-ReminderSvc.start();
+startReminderSvc();
 
 // ── Admin commands ────────────────────────────────────────────────────────────
 register(bot);

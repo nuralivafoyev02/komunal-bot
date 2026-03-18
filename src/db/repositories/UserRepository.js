@@ -1,7 +1,6 @@
 'use strict';
-import _default from '../index';
-const { createRepository } = _default;
-import { SUBSCRIPTION_PLANS } from '../../config/constants';
+import { createRepository } from '../index.js';
+import { SUBSCRIPTION_PLANS } from '../../config/constants.js';
 
 const repo = createRepository('users');
 
@@ -63,4 +62,4 @@ function getActiveHome(id) {
   return user.homes[user.activeHomeId || 'default'] || Object.values(user.homes)[0];
 }
 
-export default { create, findById, save, findAll, count, isAdmin, addAdmin, getPlan, canAddHome, getActiveHome };
+export { create, findById, save, findAll, count, isAdmin, addAdmin, getPlan, canAddHome, getActiveHome };

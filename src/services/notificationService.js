@@ -1,7 +1,7 @@
 'use strict';
-import { add } from '../db/repositories/NotificationRepository';
-import { findById, findAll } from '../db/repositories/UserRepository';
-import { NOTIFICATION_TYPES } from '../config/constants';
+import { add } from '../db/repositories/NotificationRepository.js';
+import { findById, findAll } from '../db/repositories/UserRepository.js';
+import { NOTIFICATION_TYPES } from '../config/constants.js';
 
 let _bot = null;
 function init(bot) { _bot = bot; }

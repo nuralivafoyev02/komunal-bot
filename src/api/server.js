@@ -5,7 +5,7 @@ const cors = require('cors');
 const path = require('path');
 
 const usersRoutes = require('./routes/users').default;
-const analyticsRoutes = require('./routes/analytics');
+const analyticsRoutes = require('./routes/analytics').default;
 const paymentsRoutes = require('./routes/payments').default;
 const reminderSvc = require('../services/reminderService');
 

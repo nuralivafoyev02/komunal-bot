@@ -1,6 +1,10 @@
 'use strict';
 import { existsSync, mkdirSync, writeFileSync, readFileSync } from 'fs';
-import { join } from 'path';
+import { join, dirname } from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
 const DB_DIR = join(__dirname, 'json');
 
@@ -63,4 +67,4 @@ function createRepository(collection) {
   };
 }
 
-export default { createRepository };
+export { createRepository };

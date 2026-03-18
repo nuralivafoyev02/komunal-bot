@@ -1,4 +1,4 @@
 'use strict';
-import { createRepository } from './baseRepository';
+import { createRepository } from './baseRepository.js';
 
-export default { createRepository };
+export { createRepository };

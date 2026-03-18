@@ -1,6 +1,6 @@
 'use strict';
-import { findByUser } from '../db/repositories/PaymentRepository';
-import { KOMUNAL_TYPES } from '../config/constants';
+import { findByUser } from '../db/repositories/PaymentRepository.js';
+import { KOMUNAL_TYPES } from '../config/constants.js';
 
 /**
  * Returns monthly totals grouped by komunalId for a user.

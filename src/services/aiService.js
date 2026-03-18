@@ -1,9 +1,9 @@
 'use strict';
 import Anthropic from '@anthropic-ai/sdk';
-import { compareMonths, generateInsight } from './analyticsService';
-import { findById, getActiveHome } from '../db/repositories/UserRepository';
-import { findByUser } from '../db/repositories/PaymentRepository';
-import { KOMUNAL_TYPES } from '../config/constants';
+import { compareMonths, generateInsight } from './analyticsService.js';
+import { findById, getActiveHome } from '../db/repositories/UserRepository.js';
+import { findByUser } from '../db/repositories/PaymentRepository.js';
+import { KOMUNAL_TYPES } from '../config/constants.js';
 
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 

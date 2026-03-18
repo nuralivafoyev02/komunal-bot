@@ -1,7 +1,7 @@
 'use strict';
-const { createRepository } = require('../index').default;
-const { v4: uuid } = require('uuid');
-const { NOTIFICATION_TYPES } = require('../../config/constants');
+import { createRepository } from '../index.js';
+import { v4 as uuid } from 'uuid';
+import { NOTIFICATION_TYPES } from '../../config/constants.js';
 
 const repo = createRepository('notifications');
 
@@ -42,4 +42,4 @@ function typeLabel(type) {
   return map[type] || '🔔 Bildirishnoma';
 }
 
-module.exports = { add, findByUser, countUnread, markRead, countAll, typeLabel, NOTIFICATION_TYPES };
+export { add, findByUser, countUnread, markRead, countAll, typeLabel, NOTIFICATION_TYPES };

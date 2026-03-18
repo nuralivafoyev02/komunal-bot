@@ -1,7 +1,8 @@
 'use strict';
 const router = require('express').Router();
-import Analytics from '../../services/analyticsService';
-import { findById as UserRepoFindById } from '../../db/repositories/UserRepository';
+import Analytics from '../../services/analyticsService.js';
+import { findById } from '../../db/repositories/UserRepository.js';
+const UserRepo = { findById };
 
 router.get('/:userId/monthly', (req, res) => {
   if (!UserRepo.findById(req.params.userId)) return res.status(404).json({ error: 'Not found' });
@@ -23,4 +24,4 @@ router.get('/:userId/insight', (req, res) => {
   res.json({ insight: Analytics.generateInsight(req.params.userId) });
 });
 
-module.exports = router;
+export default router;

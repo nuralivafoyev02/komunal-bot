@@ -1,8 +1,8 @@
 'use strict';
-const cron = require('node-cron');
-const UserRepo = require('../db/repositories/UserRepository').default;
-const NotifSvc = require('./notificationService').default;
-const { NOTIFICATION_TYPES } = require('../config/constants');
+import cron from 'node-cron';
+import { findById, findAll } from '../db/repositories/UserRepository.js';
+import { send } from './notificationService.js';
+import { NOTIFICATION_TYPES } from '../config/constants.js';
 
 const fmt = n => Number(n || 0).toLocaleString('uz-UZ') + ' so\'m';
 
@@ -11,7 +11,7 @@ const fmt = n => Number(n || 0).toLocaleString('uz-UZ') + ' so\'m';
  * Called every hour by cron; but respects per-user dailyCheckTime.
  */
 async function runChecks(forceUserId = null) {
-  const users = forceUserId ? [UserRepo.findById(forceUserId)].filter(Boolean) : UserRepo.findAll();
+  const users = forceUserId ? [findById(forceUserId)].filter(Boolean) : findAll();
 
   for (const user of users) {
     if (!user.notifications) continue;
@@ -33,7 +33,7 @@ async function runChecks(forceUserId = null) {
 async function checkLowBalance(user, home, k) {
   if (!user.reminderSettings?.lowBalanceAlert) return;
   if (Number(k.balance) <= Number(k.minAlert || 0) && Number(k.minAlert) > 0) {
-    await NotifSvc.send(
+    await send(
       user.userId,
       NOTIFICATION_TYPES.LOW_BALANCE,
       `Kam balans — ${k.name}`,
@@ -54,7 +54,7 @@ async function checkPaymentDue(user, home, k) {
   const threshold = user.reminderSettings?.daysBeforeDue ?? 3;
 
   if (daysLeft >= 0 && daysLeft <= threshold) {
-    await NotifSvc.send(
+    await send(
       user.userId,
       NOTIFICATION_TYPES.PAYMENT_DUE,
       `To'lov muddati yaqin — ${k.name}`,
@@ -64,7 +64,7 @@ async function checkPaymentDue(user, home, k) {
       k.id
     );
   } else if (daysLeft < 0) {
-    await NotifSvc.send(
+    await send(
       user.userId,
       NOTIFICATION_TYPES.PAYMENT_OVERDUE,
       `To'lov kechikdi — ${k.name}`,
@@ -84,7 +84,7 @@ async function checkLongNoPayment(user, home, k) {
   const daysSince = Math.floor((Date.now() - lastPay) / 86400000);
 
   if (daysSince >= 45) {
-    await NotifSvc.send(
+    await send(
       user.userId,
       NOTIFICATION_TYPES.PAYMENT_DUE,
       `Uzoq to'lov yo'q — ${k.name}`,
@@ -116,4 +116,4 @@ function start() {
   console.log('[Reminder] Scheduler started.');
 }
 
-module.exports = { start, runChecks };
+export { start, runChecks };

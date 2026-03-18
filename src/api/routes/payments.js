@@ -1,6 +1,6 @@
 'use strict';
 const router = require('express').Router();
-import { createPaymentLink, checkPaymentStatus, getProviders } from '../../services/paymentService';
+import { createPaymentLink, checkPaymentStatus, getProviders } from '../../services/paymentService.js';
 
 // Create payment link (mock)
 router.post('/create-link', async (req, res) => {
