@@ -1,13 +1,13 @@
 'use strict';
 
-const KOMUNAL_TYPES = {
+export const KOMUNAL_TYPES = {
   elektr:   { name: 'Elektr energiya', emoji: '⚡', unit: 'kWt',  color: '#7B61FF' },
   gaz:      { name: 'Gaz',             emoji: '🔥', unit: "m³",   color: '#FF7A38' },
   suv:      { name: 'Suv',             emoji: '💧', unit: 'm³',   color: '#2DD4BF' },
   chiqindi: { name: 'Chiqindi',        emoji: '♻️', unit: 'oy',   color: '#A3E635' },
 };
 
-const SUBSCRIPTION_PLANS = {
+export const SUBSCRIPTION_PLANS = {
   free: {
     name:          'Bepul',
     emoji:         '🆓',
@@ -28,7 +28,7 @@ const SUBSCRIPTION_PLANS = {
   },
 };
 
-const NOTIFICATION_TYPES = {
+export const NOTIFICATION_TYPES = {
   LOW_BALANCE:     'low_balance',
   PAYMENT_DUE:     'payment_due',
   PAYMENT_OVERDUE: 'payment_overdue',
@@ -37,14 +37,14 @@ const NOTIFICATION_TYPES = {
   SYSTEM:          'system',
 };
 
-const PAYMENT_PROVIDERS = {
+export const PAYMENT_PROVIDERS = {
   click:   { name: 'Click',   emoji: '💳', color: '#0ABDE3' },
   payme:   { name: 'Payme',   emoji: '💳', color: '#3DC9C4' },
   apelsin: { name: 'Apelsin', emoji: '🍊', color: '#FF8C00' },
 };
 
 // Regex patterns for screenshot parsing
-const SCREENSHOT_PATTERNS = {
+export const SCREENSHOT_PATTERNS = {
   amount: [
     /(\d[\d\s,.]*)\s*(so['']?m|UZS|uzs|сум)/i,
     /summa[:\s]+(\d[\d\s,.]*)/i,
@@ -64,4 +64,4 @@ const SCREENSHOT_PATTERNS = {
   },
 };
 
-module.exports = { KOMUNAL_TYPES, SUBSCRIPTION_PLANS, NOTIFICATION_TYPES, PAYMENT_PROVIDERS, SCREENSHOT_PATTERNS };
+export default { KOMUNAL_TYPES, SUBSCRIPTION_PLANS, NOTIFICATION_TYPES, PAYMENT_PROVIDERS, SCREENSHOT_PATTERNS };

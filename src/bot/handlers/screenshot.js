@@ -1,11 +1,11 @@
 'use strict';
 import { Markup } from 'telegraf';
-import ScreenshotSvc from '../../services/screenshotService';
-import { add } from '../../db/repositories/PaymentRepository';
-import UserRepo from '../../db/repositories/UserRepository';
-import NotifSvc from '../../services/notificationService';
-import { KOMUNAL_TYPES, NOTIFICATION_TYPES } from '../../config/constants';
-import { setState } from './menu';
+import ScreenshotSvc from '../../services/screenshotService.js';
+import { add } from '../../db/repositories/PaymentRepository.js';
+import * as UserRepo from '../../db/repositories/UserRepository.js';
+import * as NotifSvc from '../../services/notificationService.js';
+import { KOMUNAL_TYPES, NOTIFICATION_TYPES } from '../../config/constants.js';
+import { setState } from './menu.js';
 
 const fmt = n => Number(n || 0).toLocaleString('uz-UZ') + ' so\'m';
 
@@ -108,4 +108,5 @@ async function saveScreenshotPayment(ctx, komunalId, parsed) {
   await ctx.editMessageText(`✅ <b>Saqlandi!</b>\n\n${komunal.emoji} ${komunal.name}: +${fmt(amount)}\nBalans: <code>${fmt(newBal)}</code>`, { parse_mode: 'HTML' });
 }
 
+export { handleScreenshot, saveScreenshotPayment };
 export default { handleScreenshot, saveScreenshotPayment };

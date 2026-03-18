@@ -1,15 +1,18 @@
-'use strict';
-require('dotenv').config();
-const express = require('express');
-const cors = require('cors');
-const path = require('path');
+import 'dotenv/config';
+import express from 'express';
+import cors from 'cors';
+import path from 'path';
+import { fileURLToPath } from 'url';
 
-const usersRoutes = require('./routes/users').default;
-const analyticsRoutes = require('./routes/analytics').default;
-const paymentsRoutes = require('./routes/payments').default;
-const reminderSvc = require('../services/reminderService');
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
-const { bot } = require('../bot/index');
+import usersRoutes from './routes/users.js';
+import analyticsRoutes from './routes/analytics.js';
+import paymentsRoutes from './routes/payments.js';
+import * as reminderSvc from '../services/reminderService.js';
+import botIndex from '../bot/index.js';
+const { bot } = botIndex;
 
 const app = express();
 const PORT = process.env.PORT || 3000;

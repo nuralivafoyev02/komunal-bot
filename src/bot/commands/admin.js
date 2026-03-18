@@ -1,11 +1,11 @@
 'use strict';
-const { Markup } = require('telegraf');
-const UserRepo = require('../../db/repositories/UserRepository').default;
-const PaymentRepo = require('../../db/repositories/PaymentRepository');
-const NotifRepo = require('../../db/repositories/NotificationRepository');
-const NotifSvc = require('../../services/notificationService').default;
-const ReminderSvc = require('../../services/reminderService').default;
-const { setState } = require('../handlers/menu').default;
+import { Markup } from 'telegraf';
+import { findById, findAll, isAdmin, addAdmin, save } from '../../db/repositories/UserRepository.js';
+import { findAll as findAllPayments } from '../../db/repositories/PaymentRepository.js';
+import { countAll as countNotifications } from '../../db/repositories/NotificationRepository.js';
+import { broadcast } from '../../services/notificationService.js';
+import { runChecks } from '../../services/reminderService.js';
+import { setState } from '../handlers/menu.js';
 
 const fmt = n => Number(n || 0).toLocaleString('uz-UZ') + ' so\'m';
 
@@ -20,7 +20,7 @@ function register(bot) {
   bot.command('users', requireAdmin, async ctx => {
     const args = ctx.message.text.split(' ');
     const filter = args[1]; // active | debt | premium | free
-    let users = UserRepo.findAll();
+    let users = findAll();
 
     if (filter === 'premium') users = users.filter(u => u.subscription === 'premium');
     if (filter === 'free') users = users.filter(u => u.subscription !== 'premium');
@@ -38,11 +38,11 @@ function register(bot) {
 
   // ── /stats ──────────────────────────────────────────────────────────────────
   bot.command('stats', requireAdmin, async ctx => {
-    const users = UserRepo.findAll();
-    const payments = PaymentRepo.findAll();
+    const users = findAll();
+    const payments = findAllPayments();
     const total = payments.reduce((s, p) => s + (p.type === 'topup' ? p.amount : 0), 0);
     const prem = users.filter(u => u.subscription === 'premium').length;
-    const notifs = NotifRepo.countAll();
+    const notifs = countNotifications();
 
     await ctx.reply(
       `📊 <b>Bot statistikasi</b>\n\n` +
@@ -72,7 +72,7 @@ function register(bot) {
   bot.command('setadmin', requireAdmin, async ctx => {
     const id = ctx.message.text.split(' ')[1];
     if (!id) return ctx.reply('Foydalanish: /setadmin <userId>');
-    UserRepo.addAdmin(Number(id));
+    addAdmin(Number(id));
     ctx.reply(`✅ ${id} admin qilindi.`);
   });
 
@@ -80,23 +80,23 @@ function register(bot) {
   bot.command('setpremium', requireAdmin, async ctx => {
     const id = ctx.message.text.split(' ')[1];
     if (!id) return ctx.reply('Foydalanish: /setpremium <userId>');
-    const user = UserRepo.findById(id);
+    const user = findById(id);
     if (!user) return ctx.reply('Foydalanuvchi topilmadi.');
-    UserRepo.save(id, { ...user, subscription: 'premium', subscriptionExpiry: new Date(Date.now() + 30 * 86400000).toISOString() });
+    save(id, { ...user, subscription: 'premium', subscriptionExpiry: new Date(Date.now() + 30 * 86400000).toISOString() });
     ctx.reply(`⭐ ${user.firstName} (${id}) ga premium berildi.`);
   });
 
   // ── /alert ────────────────────────────────────────────────────────────────────
   bot.command('alert', requireAdmin, async ctx => {
     await ctx.reply('⏳ Barcha foydalanuvchilar tekshirilmoqda...');
-    await ReminderSvc.runChecks();
+    await runChecks();
     ctx.reply('✅ Tekshiruv yakunlandi.');
   });
 }
 
 async function showAdminDashboard(ctx) {
-  const users = UserRepo.findAll();
-  const payments = PaymentRepo.findAll();
+  const users = findAll();
+  const payments = findAllPayments();
   const total = payments.reduce((s, p) => s + (p.type === 'topup' ? p.amount : 0), 0);
 
   await ctx.reply(
@@ -115,8 +115,8 @@ async function showAdminDashboard(ctx) {
 }
 
 function requireAdmin(ctx, next) {
-  if (!UserRepo.isAdmin(ctx.from?.id)) return ctx.reply('❌ Ruxsat yo\'q.');
+  if (!isAdmin(ctx.from?.id)) return ctx.reply('❌ Ruxsat yo\'q.');
   return next();
 }
 
-module.exports = { register };
+export { register };

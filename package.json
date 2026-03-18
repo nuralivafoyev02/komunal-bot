@@ -1,6 +1,7 @@
 {
   "name": "komunal-bot",
   "version": "1.0.0",
+  "type": "module",
   "description": "O'zbekiston kommunal to'lovlari uchun Telegram boti",
   "main": "bot.js",
   "scripts": {
@@ -11,14 +12,16 @@
     "both": "concurrently \"node src/bot/index.js\" \"node src/api/server.js\""
   },
   "dependencies": {
-    "telegraf": "^4.16.3",
+    "@anthropic-ai/sdk": "^0.79.0",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
     "express": "^4.18.2",
     "node-cron": "^3.0.3",
-    "dotenv": "^16.4.5",
-    "cors": "^2.8.5"
+    "telegraf": "^4.16.3",
+    "uuid": "^13.0.0"
   },
   "devDependencies": {
-    "nodemon": "^3.0.2",
-    "concurrently": "^8.2.2"
+    "concurrently": "^8.2.2",
+    "nodemon": "^3.0.2"
   }
 }

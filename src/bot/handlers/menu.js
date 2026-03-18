@@ -1,12 +1,12 @@
 'use strict';
 import { Markup } from 'telegraf';
-import UserRepo from '../../db/repositories/UserRepository';
-import { totalAmount } from '../../db/repositories/PaymentRepository';
-import { countUnread, findByUser, markRead, typeLabel } from '../../db/repositories/NotificationRepository';
-import Analytics from '../../services/analyticsService';
-import NotifSvc from '../../services/notificationService';
-import PaymentSvc from '../../services/paymentService';
-import { KOMUNAL_TYPES, SUBSCRIPTION_PLANS, NOTIFICATION_TYPES } from '../../config/constants';
+import * as UserRepo from '../../db/repositories/UserRepository.js';
+import { totalAmount } from '../../db/repositories/PaymentRepository.js';
+import { countUnread, findByUser, markRead, typeLabel } from '../../db/repositories/NotificationRepository.js';
+import Analytics from '../../services/analyticsService.js';
+import NotifSvc from '../../services/notificationService.js';
+import PaymentSvc from '../../services/paymentService.js';
+import { KOMUNAL_TYPES, SUBSCRIPTION_PLANS, NOTIFICATION_TYPES } from '../../config/constants.js';
 
 const MINI_APP_URL = () => process.env.MINI_APP_URL || 'http://localhost:3000/miniapp';
 const fmt = n => Number(n || 0).toLocaleString('uz-UZ') + ' so\'m';
@@ -197,8 +197,5 @@ async function showHelp(ctx) {
 }
 
 // ── Export ────────────────────────────────────────────────────────────────────
-export default {
-  states, setState, getState, clearState,
-  mainMenu, showBalances, showStats, startAddKomunal,
-  showNotifications, showReminderSettings, startPayment, showHelp,
-};
+export { states, setState, getState, clearState, mainMenu, showBalances, showStats, startAddKomunal, showNotifications, showReminderSettings, startPayment, showHelp };
+export default { states, setState, getState, clearState, mainMenu, showBalances, showStats, startAddKomunal, showNotifications, showReminderSettings, startPayment, showHelp };

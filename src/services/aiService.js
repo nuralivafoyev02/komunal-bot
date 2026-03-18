@@ -114,4 +114,5 @@ function aiMockResponse(question, userId) {
     `Hozircha mavjud ma'lumotlar asosida aytishim mumkinki, sizning kommunallaringiz holatini kuzatib borish yaxshi natija beradi.`;
 }
 
+export { ask, buildContext };
 export default { ask, buildContext };

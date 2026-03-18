@@ -1,5 +1,5 @@
-'use strict';
-const router = require('express').Router();
+import express from 'express';
+const router = express.Router();
 import { findById, save } from '../../db/repositories/UserRepository.js';
 import { add, findByUser } from '../../db/repositories/PaymentRepository.js';
 import { findByUser as _findByUser, markRead } from '../../db/repositories/NotificationRepository.js';

@@ -101,4 +101,5 @@ function generateInsight(userId) {
 
 function fmt(n) { return Number(n || 0).toLocaleString('uz-UZ') + ' so\'m'; }
 
+export { getMonthlyTotals, compareMonths, topKomunal, allTimeTotals, averageMonthly, generateInsight };
 export default { getMonthlyTotals, compareMonths, topKomunal, allTimeTotals, averageMonthly, generateInsight };

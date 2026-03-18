@@ -1,5 +1,5 @@
-'use strict';
-const router = require('express').Router();
+import express from 'express';
+const router = express.Router();
 import Analytics from '../../services/analyticsService.js';
 import { findById } from '../../db/repositories/UserRepository.js';
 const UserRepo = { findById };

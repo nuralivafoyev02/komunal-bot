@@ -43,4 +43,5 @@ async function broadcast(bot, { text, fileId, fileType, caption }) {
 
 function delay(ms) { return new Promise(r => setTimeout(r, ms)); }
 
+export { init, send, broadcast, NOTIFICATION_TYPES };
 export default { init, send, broadcast, NOTIFICATION_TYPES };

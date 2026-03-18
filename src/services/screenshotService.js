@@ -1,5 +1,5 @@
 'use strict';
-import { SCREENSHOT_PATTERNS } from '../config/constants';
+import { SCREENSHOT_PATTERNS } from '../config/constants.js';
 
 /**
  * Parse a text string (extracted from receipt/screenshot caption or forwarded message)

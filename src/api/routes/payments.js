@@ -1,5 +1,5 @@
-'use strict';
-const router = require('express').Router();
+import express from 'express';
+const router = express.Router();
 import { createPaymentLink, checkPaymentStatus, getProviders } from '../../services/paymentService.js';
 
 // Create payment link (mock)
