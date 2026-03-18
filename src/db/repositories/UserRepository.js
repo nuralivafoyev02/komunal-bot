@@ -6,7 +6,6 @@ const repo = createRepository('users');
 
 async function create(ctx, phone) {
   const user = {
-    userId: String(ctx.from.id),
     chatId: ctx.chat.id,
     username: ctx.from.username || '',
     firstName: ctx.from.first_name || '',
