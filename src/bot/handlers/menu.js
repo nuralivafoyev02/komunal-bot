@@ -6,7 +6,7 @@ import { countUnread, findByUser, markRead, typeLabel } from '../../db/repositor
 import Analytics from '../../services/analyticsService.js';
 import NotifSvc from '../../services/notificationService.js';
 import PaymentSvc from '../../services/paymentService.js';
-import { KOMUNAL_TYPES, SUBSCRIPTION_PLANS, NOTIFICATION_TYPES } from '../../config/constants.js';
+import { KOMUNAL_TYPES, SUBSCRIPTION_PLANS, NOTIFICATION_TYPES, PREMIUM_PLANS } from '../../config/constants.js';
 
 const MINI_APP_URL = () => process.env.MINI_APP_URL || 'http://localhost:3000/miniapp';
 const fmt = n => Number(n || 0).toLocaleString('uz-UZ') + ' so\'m';
@@ -190,7 +190,6 @@ async function showPremiumPlans(ctxOrBot, userId = null) {
     return isCtx ? ctxOrBot.reply(msgAlready) : ctxOrBot.telegram.sendMessage(chat, msgAlready);
   }
 
-  const { PREMIUM_PLANS } = await import('../../config/constants.js');
   const buttons = PREMIUM_PLANS.map(p => [Markup.button.callback(`⭐ ${p.name} — ${fmt(p.price)}`, `sub_plan_${p.id}`)]);
   buttons.push([Markup.button.callback('❌ Bekor', 'cancel')]);
 

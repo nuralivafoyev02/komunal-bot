@@ -10,7 +10,7 @@ import PaymentSvc from '../services/paymentService.js';
 import { register } from './commands/admin.js';
 import { handleScreenshot, saveScreenshotPayment } from './handlers/screenshot.js';
 import { states, setState, getState, clearState, mainMenu, showBalances, showStats, startAddKomunal, showNotifications, showReminderSettings, startPayment, showHelp, showPremiumPlans } from './handlers/menu.js';
-import { KOMUNAL_TYPES, SUBSCRIPTION_PLANS, NOTIFICATION_TYPES } from '../config/constants.js';
+import { KOMUNAL_TYPES, SUBSCRIPTION_PLANS, NOTIFICATION_TYPES, PREMIUM_PLANS, CARD_DETAILS } from '../config/constants.js';
 
 const bot = new Telegraf(process.env.BOT_TOKEN);
 const fmt = n => Number(n || 0).toLocaleString('uz-UZ') + ' so\'m';
@@ -246,16 +246,14 @@ bot.on('callback_query', async ctx => {
   const userId = ctx.from.id;
   await ctx.answerCbQuery().catch(() => { });
 
-  if (data === 'cancel') { clearState(userId); return ctx.editMessageText('❌ Bekor qilindi.'); }
-
-  const user = await UserRepo.findById(userId);
+  if (data === 'cancel') { clearState(userId); return ctx.editMessageText('❌ Bekor qilindi.').catch(e => e.description?.includes('message is not modified') ? null : console.error(e)); }
 
   // Add komunal
   if (data.startsWith('add_k_')) {
     const type = data.slice(6);
     setState(userId, { step: 'add_account', komunalType: type });
     const kt = KOMUNAL_TYPES[type];
-    return ctx.editMessageText(`${kt.emoji} <b>${kt.name}</b>\n\nHisob raqamini kiriting:`, { parse_mode: 'HTML' });
+    return ctx.editMessageText(`${kt.emoji} <b>${kt.name}</b>\n\nHisob raqamini kiriting:`, { parse_mode: 'HTML' }).catch(e => e.description?.includes('message is not modified') ? null : console.error(e));
   }
 
   // Balance update
@@ -264,7 +262,7 @@ bot.on('callback_query', async ctx => {
     setState(userId, { step: 'update_balance', komunalId: id });
     const home = await UserRepo.getActiveHome(userId);
     const k = home?.komunallar[id];
-    return ctx.editMessageText(`${k?.emoji} <b>${k?.name}</b>\nHozirgi: <code>${fmt(k?.balance)}</code>\n\nYangi balansni kiriting:`, { parse_mode: 'HTML' });
+    return ctx.editMessageText(`${k?.emoji} <b>${k?.name}</b>\nHozirgi: <code>${fmt(k?.balance)}</code>\n\nYangi balansni kiriting:`, { parse_mode: 'HTML' }).catch(e => e.description?.includes('message is not modified') ? null : console.error(e));
   }
 
   // History
@@ -276,7 +274,7 @@ bot.on('callback_query', async ctx => {
     let msg = `${k?.emoji} <b>${k?.name} — Tarix</b>\n\n`;
     if (!pays.length) msg += 'Hali to\'lovlar yo\'q.';
     else pays.forEach(p => { msg += `${p.type === 'topup' ? '🟢' : '🔴'} ${fmt(p.amount)} — ${fmtDate(p.date)}\n`; });
-    return ctx.editMessageText(msg, { parse_mode: 'HTML', ...Markup.inlineKeyboard([[Markup.button.callback('🔙 Ortga', 'cancel')]]) });
+    return ctx.editMessageText(msg, { parse_mode: 'HTML', ...Markup.inlineKeyboard([[Markup.button.callback('🔙 Ortga', 'cancel')]]) }).catch(e => e.description?.includes('message is not modified') ? null : console.error(e));
   }
 
   // Delete komunal
@@ -285,17 +283,18 @@ bot.on('callback_query', async ctx => {
     const home = await UserRepo.getActiveHome(userId);
     const k = home?.komunallar[id];
     setState(userId, { step: 'confirm_delete', komunalId: id });
-    return ctx.editMessageText(`${k?.emoji} <b>${k?.name}</b>ni o\'chirishni tasdiqlaysizmi?`, { parse_mode: 'HTML', ...Markup.inlineKeyboard([[Markup.button.callback('✅ Ha', 'confirm_delete'), Markup.button.callback('❌ Yo\'q', 'cancel')]]) });
+    return ctx.editMessageText(`${k?.emoji} <b>${k?.name}</b>ni o'chirishni tasdiqlaysizmi?`, { parse_mode: 'HTML', ...Markup.inlineKeyboard([[Markup.button.callback('✅ Ha', 'confirm_delete'), Markup.button.callback('❌ Yo\'q', 'cancel')]]) }).catch(e => e.description?.includes('message is not modified') ? null : console.error(e));
   }
   if (data === 'confirm_delete') {
     const st = getState(userId);
     if (st?.step !== 'confirm_delete') return;
+    const user = await UserRepo.findById(userId);
     const home = await UserRepo.getActiveHome(userId);
     const name = home?.komunallar[st.komunalId]?.name;
     delete user.homes[user.activeHomeId].komunallar[st.komunalId];
     await UserRepo.save(userId, user);
     clearState(userId);
-    return ctx.editMessageText(`✅ <b>${name}</b> o\'chirildi.`, { parse_mode: 'HTML' });
+    return ctx.editMessageText(`✅ <b>${name}</b> o'chirildi.`, { parse_mode: 'HTML' }).catch(e => e.description?.includes('message is not modified') ? null : console.error(e));
   }
 
   // Payment provider selection
@@ -306,20 +305,19 @@ bot.on('callback_query', async ctx => {
     const providers = PaymentSvc.getProviders();
     const buttons = providers.map(p => [Markup.button.callback(`${p.emoji} ${p.name}`, `pay_prov_${p.id}_${id}`)]);
     buttons.push([Markup.button.callback('❌ Bekor', 'cancel')]);
-    return ctx.editMessageText(`${k?.emoji} <b>${k?.name}</b> uchun to\'lov tizimini tanlang:`, { parse_mode: 'HTML', ...Markup.inlineKeyboard(buttons) });
+    return ctx.editMessageText(`${k?.emoji} <b>${k?.name}</b> uchun to'lov tizimini tanlang:`, { parse_mode: 'HTML', ...Markup.inlineKeyboard(buttons) }).catch(e => e.description?.includes('message is not modified') ? null : console.error(e));
   }
   if (data.startsWith('pay_prov_')) {
     const [, , provider, komunalId] = data.split('_');
     const home = await UserRepo.getActiveHome(userId);
     const k = home?.komunallar[komunalId];
     setState(userId, { step: 'payment_amount', provider, komunalId });
-    return ctx.editMessageText(`💳 ${k?.name}\n\nTo\'lov summasi (so\'mda):`, { parse_mode: 'HTML' });
+    return ctx.editMessageText(`💳 ${k?.name}\n\nTo'lov summasi (so'mda):`, { parse_mode: 'HTML' }).catch(e => e.description?.includes('message is not modified') ? null : console.error(e));
   }
 
   // Premium plan selection
   if (data.startsWith('sub_plan_')) {
     const planId = data.slice(9);
-    const { PREMIUM_PLANS, CARD_DETAILS } = await import('../config/constants.js');
     const plan = PREMIUM_PLANS.find(p => p.id === planId);
     setState(userId, { step: 'sub_awaiting_receipt', planId });
     return ctx.editMessageText(
@@ -331,7 +329,7 @@ bot.on('callback_query', async ctx => {
       `🏦 ${CARD_DETAILS.bank}\n\n` +
       `To'lovdan so'ng, chekni (screenshot) rasm ko'rinishida yuboring.`,
       { parse_mode: 'HTML' }
-    );
+    ).catch(e => e.description?.includes('message is not modified') ? null : console.error(e));
   }
 
   // Admin approval
@@ -343,17 +341,16 @@ bot.on('callback_query', async ctx => {
     const planId = parts[3];
 
     if (action === 'approve') {
-      const { PREMIUM_PLANS } = await import('../config/constants.js');
       const plan = PREMIUM_PLANS.find(p => p.id === planId);
       const targetUser = await UserRepo.findById(targetUserId);
       if (targetUser) {
         const expiry = new Date(Date.now() + (plan.duration || 30) * 86400000).toISOString();
         await UserRepo.save(targetUserId, { ...targetUser, subscription: 'premium', subscriptionExpiry: expiry });
-        await ctx.editMessageText(`✅ @${targetUser.username || targetUserId} ga Premium berildi.`, { parse_mode: 'HTML' });
+        await ctx.editMessageText(`✅ @${targetUser.username || targetUserId} ga Premium berildi.`, { parse_mode: 'HTML' }).catch(e => e.description?.includes('message is not modified') ? null : console.error(e));
         await bot.telegram.sendMessage(targetUserId, `⭐ <b>Tabriklaymiz!</b>\n\nTo'lovingiz tasdiqlandi. Premium tarif yoqildi!`, { parse_mode: 'HTML' });
       }
     } else {
-      await ctx.editMessageText(`❌ To'lov rad etildi.`, { parse_mode: 'HTML' });
+      await ctx.editMessageText(`❌ To'lov rad etildi.`, { parse_mode: 'HTML' }).catch(e => e.description?.includes('message is not modified') ? null : console.error(e));
       await bot.telegram.sendMessage(targetUserId, `❌ <b>Kechirasiz!</b>\n\nTo'lov tasdiqlanmadi. Agar xatolik bo'lsa, adminga murojaat qiling.`, { parse_mode: 'HTML' });
     }
     return;
@@ -377,33 +374,38 @@ bot.on('callback_query', async ctx => {
   }
 
   // Reminder toggles
-  if (data === 'toggle_notif') {
-    user.notifications = !user.notifications;
-    await UserRepo.save(userId, user);
-    return ctx.answerCbQuery(user.notifications ? '🔔 Yoqildi' : '🔕 O\'chirildi');
-  }
-  if (data === 'toggle_low') {
-    user.reminderSettings.lowBalanceAlert = !user.reminderSettings.lowBalanceAlert;
-    await UserRepo.save(userId, user);
-    return ctx.answerCbQuery('Yangilandi');
-  }
-  if (data === 'toggle_due') {
-    user.reminderSettings.paymentDueAlert = !user.reminderSettings.paymentDueAlert;
-    await UserRepo.save(userId, user);
-    return ctx.answerCbQuery('Yangilandi');
-  }
-  if (data.startsWith('days_')) {
-    const days = parseInt(data.split('_')[1]);
-    user.reminderSettings.daysBeforeDue = days;
-    await UserRepo.save(userId, user);
-    return ctx.answerCbQuery(`${days} kun oldin`);
+  if (data === 'toggle_notif' || data === 'toggle_low' || data === 'toggle_due' || data.startsWith('days_')) {
+    const user = await UserRepo.findById(userId);
+    if (!user) return ctx.answerCbQuery('User not found');
+
+    if (data === 'toggle_notif') {
+      user.notifications = !user.notifications;
+      await UserRepo.save(userId, user);
+      return ctx.answerCbQuery(user.notifications ? '🔔 Yoqildi' : '🔕 O\'chirildi');
+    }
+    if (data === 'toggle_low') {
+      user.reminderSettings.lowBalanceAlert = !user.reminderSettings.lowBalanceAlert;
+      await UserRepo.save(userId, user);
+      return ctx.answerCbQuery('Yangilandi');
+    }
+    if (data === 'toggle_due') {
+      user.reminderSettings.paymentDueAlert = !user.reminderSettings.paymentDueAlert;
+      await UserRepo.save(userId, user);
+      return ctx.answerCbQuery('Yangilandi');
+    }
+    if (data.startsWith('days_')) {
+      const days = parseInt(data.split('_')[1]);
+      user.reminderSettings.daysBeforeDue = days;
+      await UserRepo.save(userId, user);
+      return ctx.answerCbQuery(`${days} kun oldin`);
+    }
   }
 
   // Broadcast send
   if (data === 'broadcast_send' && (await UserRepo.isAdmin(userId))) {
     const st = getState(userId);
     if (!st) return;
-    await ctx.editMessageText('📤 Yuborilmoqda...');
+    await ctx.editMessageText('📤 Yuborilmoqda...').catch(e => e.description?.includes('message is not modified') ? null : console.error(e));
     const { sent, failed } = await NotifSvc.broadcast(bot, {
       text: st.text, fileId: st.fileId, fileType: st.fileType, caption: st.caption,
     });
@@ -435,7 +437,6 @@ async function handlePremiumReceipt(ctx, state) {
   
   const photo = ctx.message.photo.at(-1).file_id;
   const planId = state.planId;
-  const { PREMIUM_PLANS } = await import('../config/constants.js');
   const plan = PREMIUM_PLANS.find(p => p.id === planId);
 
   await ctx.reply('✅ Chek adminga yuborildi. Tasdiqlanishini kuting.');
