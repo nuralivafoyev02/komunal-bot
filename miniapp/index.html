@@ -325,6 +325,7 @@ const CACHE_KEY = `komunal_cache_${userId}`;
 const KC = {
   elektr:   '#7B61FF', gaz:'#FF7A38', suv:'#2DD4BF',
   chiqindi: '#A3E635', internet:'#34D399', issiqlik:'#FB7185',
+  axlat:    '#A3E635', // Alias for chiqindi
 };
 function kColor(id){ return KC[id] || '#94A3B8'; }
 
@@ -350,14 +351,16 @@ async function boot() {
       fetch(`${API}/api/analytics/${userId}/compare`),
       fetch(`${API}/api/users/${userId}/notifications`),
     ]);
-    userData  = uRes.ok  ? await uRes.json()  : cached?.userData;
-    payments  = pRes.ok  ? await pRes.json()  : cached?.payments || [];
-    analytics = aRes.ok  ? await aRes.json()  : cached?.analytics || [];
-    notifs    = nRes.ok  ? await nRes.json()  : cached?.notifs   || [];
+    
+    if (uRes.ok)  userData  = await uRes.json();
+    if (pRes.ok)  payments  = await pRes.json();
+    if (aRes.ok)  analytics = await aRes.json();
+    if (nRes.ok)  notifs    = await nRes.json();
 
     saveCache({ userData, payments, analytics, notifs });
     applyData({ userData, payments, analytics, notifs });
-  } catch {
+  } catch (err) {
+    console.error('Boot error:', err);
     if (!cached) showOffline();
   } finally {
     hideSplash();

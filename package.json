@@ -4,11 +4,11 @@
   "description": "O'zbekiston kommunal to'lovlari uchun Telegram boti",
   "main": "bot.js",
   "scripts": {
-    "start": "node bot.js",
-    "dev": "nodemon bot.js",
-    "server": "node server.js",
+    "start": "node src/bot/index.js",
+    "dev": "nodemon src/bot/index.js",
+    "server": "node src/api/server.js",
     "preview": "node server.js",
-    "both": "concurrently \"node bot.js\" \"node server.js\""
+    "both": "concurrently \"node src/bot/index.js\" \"node src/api/server.js\""
   },
   "dependencies": {
     "telegraf": "^4.16.3",
