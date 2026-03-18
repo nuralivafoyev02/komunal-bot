@@ -350,7 +350,7 @@ bot.on('callback_query', async ctx => {
         await bot.telegram.sendMessage(targetUserId, `⭐ <b>Tabriklaymiz!</b>\n\nTo'lovingiz tasdiqlandi. Premium tarif yoqildi!`, { parse_mode: 'HTML' });
       } catch (err) {
         console.error('Error approving premium:', err);
-        await ctx.answerCbQuery('Xatolik yuz berdi. Iltimos qayta urinib ko\'ring.', { show_alert: true });
+        await ctx.editMessageCaption(`❌ <b>Xatolik!</b>\n\nBazaga ulanishda muammo bo'ldi. Iltimos yana bir bor urinib ko'ring.\n\nFoydalanuvchi: ${targetUserId}`, { parse_mode: 'HTML' }).catch(() => { });
       }
     } else {
       await ctx.editMessageCaption(`❌ To'lov rad etildi.`, { parse_mode: 'HTML' }).catch(() => { });

@@ -10,17 +10,15 @@ if (!supabaseUrl || !supabaseKey) {
 const supabase = createClient(supabaseUrl || '', supabaseKey || '');
 
 async function withRetry(fn, retries = 3, delayMs = 500) {
-  let lastRes;
+  let lastErr;
   for (let i = 0; i < retries; i++) {
     try {
       const res = await fn();
-      const error = res?.error;
+      if (!res?.error) return res;
 
-      if (!error) return res;
-
-      // If we have an error object, check if it's a network error
-      const msg = error.message || '';
-      const code = error.code || '';
+      lastErr = res.error;
+      const msg = lastErr.message || '';
+      const code = lastErr.code || '';
       const isNetworkErr =
         msg.includes('fetch failed') ||
         msg.includes('socket') ||
@@ -28,12 +26,10 @@ async function withRetry(fn, retries = 3, delayMs = 500) {
         code === 'UND_ERR_SOCKET' ||
         code === 'ECONNRESET';
 
-      if (!isNetworkErr) return res; // Not a network error, don't retry
-
-      lastRes = res;
+      if (!isNetworkErr) return res;
       if (i < retries - 1) await new Promise(r => setTimeout(r, delayMs * (i + 1)));
     } catch (err) {
-      // Handle actual thrown exceptions (like DNS failures)
+      lastErr = err;
       const msg = err.message || '';
       const isNetworkErr =
         msg.includes('fetch failed') ||
@@ -46,7 +42,8 @@ async function withRetry(fn, retries = 3, delayMs = 500) {
       if (i < retries - 1) await new Promise(r => setTimeout(r, delayMs * (i + 1)));
     }
   }
-  return lastRes;
+  if (lastErr instanceof Error) throw lastErr;
+  return { data: null, error: lastErr };
 }
 
 function createRepository(collection) {
