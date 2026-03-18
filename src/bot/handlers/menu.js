@@ -31,6 +31,7 @@ async function mainMenu(userId) {
     [Markup.button.text('💳 To\'lov qilish'), Markup.button.text('⚙️ Sozlamalar')],
     [Markup.button.webApp('📱 Mini App', MINI_APP_URL() + '?userId=' + userId)],
     [Markup.button.text('ℹ️ Yordam'), Markup.button.text('🤖 AI Yordam')],
+    [Markup.button.text('⭐ Premium olish')],
   ];
   if (isAdm) rows.push([Markup.button.text('👑 Admin Panel')]);
   return Markup.keyboard(rows).resize();
@@ -178,6 +179,30 @@ async function startPayment(ctx) {
   await ctx.reply('💳 <b>Qaysi kommunal uchun to\'lov?</b>', { parse_mode: 'HTML', ...Markup.inlineKeyboard(buttons) });
 }
 
+// ── Premium Plans ─────────────────────────────────────────────────────────────
+
+async function showPremiumPlans(ctx) {
+  const userId = ctx.from.id;
+  const user = await UserRepo.findById(userId);
+  if (user?.subscription === 'premium') {
+    return ctx.reply('⭐ Sizda allaqachon Premium tarif yoqilgan!', { parse_mode: 'HTML' });
+  }
+
+  const { PREMIUM_PLANS } = await import('../../config/constants.js');
+  const buttons = PREMIUM_PLANS.map(p => [Markup.button.callback(`⭐ ${p.name} — ${fmt(p.price)}`, `sub_plan_${p.id}`)]);
+  buttons.push([Markup.button.callback('❌ Bekor', 'cancel')]);
+
+  await ctx.reply(
+    `⭐ <b>Premium Imkoniyatlar</b>\n\n` +
+    `• 🏠 10 tagacha uy qo'shish\n` +
+    `• ⚡ 20 tagacha kommunal\n` +
+    `• 📊 Batafsil tahlil va statistika\n` +
+    `• 🔔 Kengaytirilgan eslatmalar\n\n` +
+    `<b>Tarifni tanlang:</b>`,
+    { parse_mode: 'HTML', ...Markup.inlineKeyboard(buttons) }
+  );
+}
+
 // ── Help ──────────────────────────────────────────────────────────────────────
 
 async function showHelp(ctx) {
@@ -197,5 +222,5 @@ async function showHelp(ctx) {
 }
 
 // ── Export ────────────────────────────────────────────────────────────────────
-export { states, setState, getState, clearState, mainMenu, showBalances, showStats, startAddKomunal, showNotifications, showReminderSettings, startPayment, showHelp };
-export default { states, setState, getState, clearState, mainMenu, showBalances, showStats, startAddKomunal, showNotifications, showReminderSettings, startPayment, showHelp };
+export { states, setState, getState, clearState, mainMenu, showBalances, showStats, startAddKomunal, showNotifications, showReminderSettings, startPayment, showHelp, showPremiumPlans };
+export default { states, setState, getState, clearState, mainMenu, showBalances, showStats, startAddKomunal, showNotifications, showReminderSettings, startPayment, showHelp, showPremiumPlans };

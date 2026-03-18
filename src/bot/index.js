@@ -82,6 +82,7 @@ bot.command('ai', async ctx => {
 bot.on('photo', async ctx => {
   const state = getState(ctx.from.id);
   if (state?.step === 'admin_awaiting_broadcast') return handleAdminMedia(ctx, 'photo');
+  if (state?.step === 'sub_awaiting_receipt') return await handlePremiumReceipt(ctx, state);
   if (!(await UserRepo.findById(ctx.from.id))) return;
   await handleScreenshot(ctx);
 });
@@ -116,6 +117,7 @@ bot.on('text', async ctx => {
       return ctx.reply('🤖 <b>AI Yordamchi</b>\n\nSavolingizni yozing:', { parse_mode: 'HTML' });
     }
     case 'ℹ️ Yordam': return await showHelp(ctx);
+    case '⭐ Premium olish': return await showPremiumPlans(ctx);
     case '👑 Admin Panel': return (await UserRepo.isAdmin(userId)) ? ctx.reply('Admin buyruqlari:\n/admin /users /stats /message /alert') : null;
     default: {
       const notifLabel = text.match(/🔔 Bildirishnomalar/);
@@ -232,6 +234,11 @@ async function handleState(ctx, state, text) {
       { parse_mode: 'HTML', ...Markup.inlineKeyboard([[Markup.button.callback('✅ Yuborish', 'broadcast_send'), Markup.button.callback('❌ Bekor', 'cancel')]]) }
     );
   }
+
+  // ── Premium receipt manual (if any) ───────────────────────────────────────
+  if (state.step === 'sub_awaiting_receipt') {
+    return ctx.reply('⚠️ Iltimos, to\'lov chekini (rasm ko\'rinishida) yuboring.\nBekor qilish: /cancel');
+  }
 }
 
 // ── Callback queries ──────────────────────────────────────────────────────────
@@ -310,6 +317,49 @@ bot.on('callback_query', async ctx => {
     return ctx.editMessageText(`💳 ${k?.name}\n\nTo\'lov summasi (so\'mda):`, { parse_mode: 'HTML' });
   }
 
+  // Premium plan selection
+  if (data.startsWith('sub_plan_')) {
+    const planId = data.slice(9);
+    const { PREMIUM_PLANS, CARD_DETAILS } = await import('../../config/constants.js');
+    const plan = PREMIUM_PLANS.find(p => p.id === planId);
+    setState(userId, { step: 'sub_awaiting_receipt', planId });
+    return ctx.editMessageText(
+      `⭐ <b>Premium: ${plan.name}</b>\n\n` +
+      `Summa: <b>${fmt(plan.price)}</b>\n\n` +
+      `To'lov uchun karta:\n` +
+      `💳 <code>${CARD_DETAILS.number}</code>\n` +
+      `👤 ${CARD_DETAILS.owner}\n` +
+      `🏦 ${CARD_DETAILS.bank}\n\n` +
+      `To'lovdan so'ng, chekni (screenshot) rasm ko'rinishida yuboring.`,
+      { parse_mode: 'HTML' }
+    );
+  }
+
+  // Admin approval
+  if (data.startsWith('sub_approve_') || data.startsWith('sub_reject_')) {
+    if (!(await UserRepo.isAdmin(userId))) return ctx.answerCbQuery('Ruxsat yo\'q');
+    const parts = data.split('_');
+    const action = parts[1]; // approve / reject
+    const targetUserId = parts[2];
+    const planId = parts[3];
+
+    if (action === 'approve') {
+      const { PREMIUM_PLANS } = await import('../../config/constants.js');
+      const plan = PREMIUM_PLANS.find(p => p.id === planId);
+      const targetUser = await UserRepo.findById(targetUserId);
+      if (targetUser) {
+        const expiry = new Date(Date.now() + (plan.duration || 30) * 86400000).toISOString();
+        await UserRepo.save(targetUserId, { ...targetUser, subscription: 'premium', subscriptionExpiry: expiry });
+        await ctx.editMessageText(`✅ @${targetUser.username || targetUserId} ga Premium berildi.`, { parse_mode: 'HTML' });
+        await bot.telegram.sendMessage(targetUserId, `⭐ <b>Tabriklaymiz!</b>\n\nTo'lovingiz tasdiqlandi. Premium tarif yoqildi!`, { parse_mode: 'HTML' });
+      }
+    } else {
+      await ctx.editMessageText(`❌ To'lov rad etildi.`, { parse_mode: 'HTML' });
+      await bot.telegram.sendMessage(targetUserId, `❌ <b>Kechirasiz!</b>\n\nTo'lov tasdiqlanmadi. Agar xatolik bo'lsa, adminga murojaat qiling.`, { parse_mode: 'HTML' });
+    }
+    return;
+  }
+
   // Screenshot komunal selection
   if (data.startsWith('screenshot_komunal_')) {
     const id = data.slice(19);
@@ -378,6 +428,34 @@ async function handleAdminMedia(ctx, fileType) {
     `📢 <b>Media xabar</b>\n\nTur: ${fileType}\n${caption ? `Izoh: ${caption}\n` : ''}👥 ${count} ta foydalanuvchiga yuboriladi.`,
     { parse_mode: 'HTML', ...Markup.inlineKeyboard([[Markup.button.callback('✅ Yuborish', 'broadcast_send'), Markup.button.callback('❌ Bekor', 'cancel')]]) }
   );
+}
+
+async function handlePremiumReceipt(ctx, state) {
+  const userId = ctx.from.id;
+  if (!ctx.message.photo) return ctx.reply('⚠️ Iltimos, to\'lov chekini (rasm ko\'rinishida) yuboring.');
+  
+  const photo = ctx.message.photo.at(-1).file_id;
+  const planId = state.planId;
+  const { PREMIUM_PLANS } = await import('../config/constants.js');
+  const plan = PREMIUM_PLANS.find(p => p.id === planId);
+
+  await ctx.reply('✅ Chek adminga yuborildi. Tasdiqlanishini kuting.');
+  clearState(userId);
+
+  const adminMsg = `💎 <b>Yangi Premium so'rovi!</b>\n\n` +
+    `Foydalanuvchi: @${ctx.from.username || ctx.from.first_name}\n` +
+    `ID: <code>${userId}</code>\n` +
+    `Tarif: <b>${plan?.name || planId}</b>\n` +
+    `Summa: <b>${fmt(plan?.price || 0)}</b>\n\n` +
+    `Tasdiqlaysizmi?`;
+
+  await NotifSvc.sendToAdmins(bot, adminMsg, {
+    photo,
+    markup: Markup.inlineKeyboard([
+      [Markup.button.callback('✅ Tasdiqlash', `sub_approve_${userId}_${planId}`)],
+      [Markup.button.callback('❌ Rad etish', `sub_reject_${userId}_${planId}`)]
+    ])
+  });
 }
 
 function parseAmount(s) { return parseFloat(String(s).replace(/\s/g, '').replace(/,/g, '.')); }

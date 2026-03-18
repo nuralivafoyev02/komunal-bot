@@ -41,7 +41,27 @@ async function broadcast(bot, { text, fileId, fileType, caption }) {
   return { sent, failed };
 }
 
+async function sendToAdmins(bot, content, extra = {}) {
+  const users = await findAll();
+  // Check both role and env list
+  const envList = (process.env.ADMIN_IDS || '').split(',').map(x => x.trim());
+  const admins = users.filter(u => u.role === 'admin' || envList.includes(String(u.id)));
+  
+  for (const admin of admins) {
+    try {
+      const chat = admin.chatId || admin.id;
+      if (extra.photo) {
+        await bot.telegram.sendPhoto(chat, extra.photo, { caption: content, parse_mode: 'HTML', ...extra.markup });
+      } else {
+        await bot.telegram.sendMessage(chat, content, { parse_mode: 'HTML', ...extra.markup });
+      }
+    } catch (e) {
+      console.error(`[Notif] sendToAdmins failed for ${admin.id}:`, e.message);
+    }
+  }
+}
+
 function delay(ms) { return new Promise(r => setTimeout(r, ms)); }
 
-export { init, send, broadcast, NOTIFICATION_TYPES };
-export default { init, send, broadcast, NOTIFICATION_TYPES };
+export { init, send, broadcast, sendToAdmins, NOTIFICATION_TYPES };
+export default { init, send, broadcast, sendToAdmins, NOTIFICATION_TYPES };

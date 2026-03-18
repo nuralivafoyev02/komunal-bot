@@ -1,45 +1,57 @@
 'use strict';
 
 export const KOMUNAL_TYPES = {
-  elektr:   { name: 'Elektr energiya', emoji: '⚡', unit: 'kWt',  color: '#7B61FF' },
-  gaz:      { name: 'Gaz',             emoji: '🔥', unit: "m³",   color: '#FF7A38' },
-  suv:      { name: 'Suv',             emoji: '💧', unit: 'm³',   color: '#2DD4BF' },
-  chiqindi: { name: 'Chiqindi',        emoji: '♻️', unit: 'oy',   color: '#A3E635' },
+  elektr: { name: 'Elektr energiya', emoji: '⚡', unit: 'kWt', color: '#7B61FF' },
+  gaz: { name: 'Gaz', emoji: '🔥', unit: "m³", color: '#FF7A38' },
+  suv: { name: 'Suv', emoji: '💧', unit: 'm³', color: '#2DD4BF' },
+  chiqindi: { name: 'Chiqindi', emoji: '♻️', unit: 'oy', color: '#A3E635' },
 };
 
 export const SUBSCRIPTION_PLANS = {
   free: {
-    name:          'Bepul',
-    emoji:         '🆓',
-    maxHomes:      1,
+    name: 'Bepul',
+    emoji: '🆓',
+    maxHomes: 1,
     maxKomunallar: 4,
-    analytics:     false,
+    analytics: false,
     advancedReminder: false,
-    price:         0,
+    price: 0,
   },
   premium: {
-    name:          'Premium',
-    emoji:         '⭐',
-    maxHomes:      10,
+    name: 'Premium',
+    emoji: '⭐',
+    maxHomes: 10,
     maxKomunallar: 20,
-    analytics:     true,
+    analytics: true,
     advancedReminder: true,
-    price:         15000,
+    price: 9999,
   },
+};
+
+export const PREMIUM_PLANS = [
+  { id: '1m', name: '1 oy', price: 9999, duration: 30 },
+  { id: '3m', name: '3 oy', price: 27000, duration: 90 },
+  { id: '6m', name: '6 oy', price: 49000, duration: 180 },
+];
+
+export const CARD_DETAILS = {
+  number: '9860 1901 1131 6492',
+  owner: 'Nurali Vafoyev',
+  bank: 'Aloqa Bank'
 };
 
 export const NOTIFICATION_TYPES = {
-  LOW_BALANCE:     'low_balance',
-  PAYMENT_DUE:     'payment_due',
+  LOW_BALANCE: 'low_balance',
+  PAYMENT_DUE: 'payment_due',
   PAYMENT_OVERDUE: 'payment_overdue',
-  PAYMENT_ADDED:   'payment_added',
-  BROADCAST:       'broadcast',
-  SYSTEM:          'system',
+  PAYMENT_ADDED: 'payment_added',
+  BROADCAST: 'broadcast',
+  SYSTEM: 'system',
 };
 
 export const PAYMENT_PROVIDERS = {
-  click:   { name: 'Click',   emoji: '💳', color: '#0ABDE3' },
-  payme:   { name: 'Payme',   emoji: '💳', color: '#3DC9C4' },
+  click: { name: 'Click', emoji: '💳', color: '#0ABDE3' },
+  payme: { name: 'Payme', emoji: '💳', color: '#3DC9C4' },
   apelsin: { name: 'Apelsin', emoji: '🍊', color: '#FF8C00' },
 };
 
@@ -57,9 +69,9 @@ export const SCREENSHOT_PATTERNS = {
     /(\d{2}\s+\w+\s+\d{4})/i,
   ],
   service: {
-    elektr:   /elektr|quvvat|energy|UE|ME|EE/i,
-    gaz:      /gaz|gas|UG|MG/i,
-    suv:      /suv|water|vodokanal|UV|MV/i,
+    elektr: /elektr|quvvat|energy|UE|ME|EE/i,
+    gaz: /gaz|gas|UG|MG/i,
+    suv: /suv|water|vodokanal|UV|MV/i,
     chiqindi: /chiqindi|axlat|mast|TKO/i,
   },
 };
